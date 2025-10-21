@@ -82,7 +82,7 @@ class Game {
 
       // 6. 渲染游戏板
       console.log('🎨 渲染游戏板...');
-      this.renderEngine.renderBoard(this.boardManager.board, this.textureFactory);
+      this.renderEngine.renderBoard(this.boardManager, this.textureFactory);
 
       // 7. 初始化输入管理器
       console.log('\n🎮 初始化输入管理器...');
@@ -146,7 +146,7 @@ class Game {
       }
       
       // 检测匹配
-      const matches = this.matchDetector.findMatches(this.boardManager.board);
+      const matches = this.matchDetector.findMatches(this.boardManager);
       if (matches.length > 0) {
         console.log(`✅ 发现匹配: ${matches.length} 个`);
         matches.forEach((match, index) => {
