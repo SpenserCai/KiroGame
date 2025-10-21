@@ -14,6 +14,8 @@ import { RenderEngine } from './rendering/RenderEngine.js';
 import { TileTextureFactory } from './rendering/TileTextureFactory.js';
 import { InputManager } from './input/InputManager.js';
 import { AnimationController } from './animation/AnimationController.js';
+import { ErrorHandler, GameError, ErrorType } from './utils/ErrorHandler.js';
+import { PerformanceMonitor } from './utils/PerformanceMonitor.js';
 
 /**
  * 游戏主类
@@ -22,6 +24,8 @@ class Game {
   constructor() {
     this.config = GameConfig;
     this.eventBus = new EventBus();
+    this.errorHandler = new ErrorHandler(this.eventBus);
+    this.performanceMonitor = new PerformanceMonitor(this.config);
     
     // 核心模块
     this.stateManager = null;
@@ -36,6 +40,33 @@ class Game {
     
     // 初始化状态
     this.isInitialized = false;
+    
+    // 设置全局错误处理
+    this.setupGlobalErrorHandlers();
+  }
+
+  /**
+   * 设置全局错误处理
+   */
+  setupGlobalErrorHandlers() {
+    // 捕获未处理的Promise错误
+    window.addEventListener('unhandledrejection', (event) => {
+      console.error('Unhandled promise rejection:', event.reason);
+      this.errorHandler.handle(
+        new GameError(ErrorType.LOGIC_ERROR, '未处理的Promise错误', event.reason),
+        { gameEngine: this.gameEngine }
+      );
+      event.preventDefault();
+    });
+
+    // 捕获全局错误
+    window.addEventListener('error', (event) => {
+      console.error('Global error:', event.error);
+      this.errorHandler.handle(
+        new GameError(ErrorType.LOGIC_ERROR, '全局错误', event.error),
+        { gameEngine: this.gameEngine }
+      );
+    });
   }
 
   /**
@@ -43,6 +74,9 @@ class Game {
    */
   async init() {
     try {
+      // 验证配置
+      ErrorHandler.validateConfig(this.config);
+      
       console.log('🎮 开始初始化游戏...\n');
 
       // 1. 创建事件总线
@@ -95,22 +129,52 @@ class Game {
       this.textureFactory = new TileTextureFactory(this.config);
       
       // 显示加载进度
-      await this.textureFactory.init((progress) => {
-        // 可以在这里更新加载进度UI
-        if (progress % 20 === 0 || progress === 100) {
-          console.log(`  📦 加载进度: ${progress.toFixed(0)}%`);
-        }
-      });
+      try {
+        await this.textureFactory.init((progress) => {
+          // 可以在这里更新加载进度UI
+          if (progress % 20 === 0 || progress === 100) {
+            console.log(`  📦 加载进度: ${progress.toFixed(0)}%`);
+          }
+        });
+      } catch (error) {
+        throw new GameError(
+          ErrorType.RESOURCE_ERROR,
+          '纹理资源加载失败',
+          error
+        );
+      }
 
       // 8. 初始化渲染引擎
       console.log('\n🖼️  初始化渲染引擎...');
       const container = document.getElementById('game-container');
       if (!container) {
-        throw new Error('Game container not found');
+        throw new GameError(
+          ErrorType.INIT_ERROR,
+          '找不到游戏容器元素 #game-container'
+        );
       }
 
       this.renderEngine = new RenderEngine(container, this.config, this.eventBus);
-      await this.renderEngine.init();
+      try {
+        await this.renderEngine.init();
+        
+        // 监听WebGL上下文丢失
+        if (this.renderEngine.app && this.renderEngine.app.canvas) {
+          this.renderEngine.app.canvas.addEventListener('webglcontextlost', (event) => {
+            event.preventDefault();
+            this.errorHandler.handle(
+              new GameError(ErrorType.CONTEXT_LOST, 'WebGL上下文丢失'),
+              { renderEngine: this.renderEngine }
+            );
+          });
+        }
+      } catch (error) {
+        throw new GameError(
+          ErrorType.RENDER_ERROR,
+          '渲染引擎初始化失败',
+          error
+        );
+      }
 
       // 9. 创建 UI 元素
       console.log('🎨 创建 UI 元素...');
@@ -137,13 +201,13 @@ class Game {
       // 12. 设置游戏循环（更新动画和游戏逻辑）
       this.renderEngine.app.ticker.add((ticker) => {
         const deltaTime = ticker.deltaMS;
+        
+        // 更新性能监控
+        this.performanceMonitor.update(deltaTime);
+        
+        // 更新动画和游戏逻辑
         this.animationController.update(deltaTime);
         this.gameEngine.update(deltaTime / 1000); // 转换为秒
-        
-        // 更新 FPS 显示（如果启用）
-        if (this.config.debug.showFPS) {
-          this.renderEngine.updateFPS(ticker.FPS);
-        }
       });
 
       // 13. 添加键盘事件监听
@@ -152,16 +216,40 @@ class Game {
       // 14. 订阅游戏事件
       this.setupEventListeners();
 
-      // 15. 显示开始菜单
+      // 15. 初始化性能监控器
+      this.performanceMonitor.init();
+
+      // 16. 显示开始菜单
       this.renderEngine.createStartMenu();
 
       this.isInitialized = true;
       console.log('\n✨ 游戏初始化完成！\n');
       console.log('💡 提示: 点击"开始游戏"按钮开始游戏');
       console.log('💡 游戏中按 ESC 键暂停/恢复游戏');
+      
+      if (this.config.debug.enabled) {
+        console.log('💡 调试模式已启用');
+        if (this.config.debug.showFPS) {
+          console.log('💡 FPS显示已启用（右上角）');
+        }
+      }
 
     } catch (error) {
       console.error('❌ 游戏初始化失败:', error);
+      
+      // 使用错误处理器处理
+      if (error instanceof GameError) {
+        this.errorHandler.handle(error, {
+          gameEngine: this.gameEngine,
+          renderEngine: this.renderEngine
+        });
+      } else {
+        this.errorHandler.handle(
+          new GameError(ErrorType.INIT_ERROR, '游戏初始化失败', error),
+          { gameEngine: this.gameEngine, renderEngine: this.renderEngine }
+        );
+      }
+      
       throw error;
     }
   }
@@ -483,11 +571,19 @@ class Game {
    * 清理资源
    */
   destroy() {
+    // 打印性能报告
+    if (this.config.debug.enabled) {
+      this.performanceMonitor.printReport();
+    }
+    
     if (this.renderEngine) {
       this.renderEngine.destroy();
     }
     if (this.inputManager) {
       this.inputManager.destroy();
+    }
+    if (this.performanceMonitor) {
+      this.performanceMonitor.destroy();
     }
     console.log('🗑️  游戏已清理');
   }

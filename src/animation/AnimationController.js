@@ -5,6 +5,7 @@
 
 import { Tween } from './Tween.js';
 import { GameEvents } from '../core/EventBus.js';
+import { ObjectPool } from '../utils/PerformanceMonitor.js';
 
 /**
  * 动画控制器类
@@ -27,6 +28,19 @@ export class AnimationController {
     
     // 动画计数器
     this.animationCount = 0;
+    
+    // 补间对象池（性能优化）
+    this.tweenPool = new ObjectPool(
+      () => new Tween(null, {}, 0, 'linear'),
+      (tween) => {
+        tween.target = null;
+        tween.startProps = {};
+        tween.endProps = {};
+        tween.elapsed = 0;
+        tween.isComplete = false;
+      },
+      20 // 初始池大小
+    );
   }
 
   /**
@@ -43,9 +57,13 @@ export class AnimationController {
       const tween = this.activeTweens[i];
       const isComplete = tween.update(deltaTime);
       
-      // 移除已完成的动画
+      // 移除已完成的动画并回收到对象池
       if (isComplete) {
         this.activeTweens.splice(i, 1);
+        // 回收补间对象到对象池
+        if (this.tweenPool) {
+          this.tweenPool.release(tween);
+        }
       }
     }
     
@@ -63,6 +81,25 @@ export class AnimationController {
   _addTween(tween) {
     this.activeTweens.push(tween);
     this.animationCount++;
+  }
+
+  /**
+   * 从对象池创建补间动画（性能优化）
+   * @param {Object} target - 目标对象
+   * @param {Object} props - 要补间的属性
+   * @param {number} duration - 动画时长（毫秒）
+   * @param {string|Function} easing - 缓动函数
+   * @returns {Tween} 补间动画对象
+   */
+  _createTween(target, props, duration, easing = 'linear') {
+    if (this.tweenPool) {
+      const tween = this.tweenPool.acquire();
+      tween.init(target, props, duration, easing);
+      return tween;
+    } else {
+      // 降级：直接创建新对象
+      return new Tween(target, props, duration, easing);
+    }
   }
 
   /**
