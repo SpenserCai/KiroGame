@@ -737,6 +737,7 @@ export class GameEngine {
     this.stateManager.setState(GameState.PLAYING);
     this.startTimer();
     this.eventBus.emit(GameEvents.GAME_START);
+    this.eventBus.emit(GameEvents.INPUT_ENABLED);
     console.log('🚀 游戏开始！');
   }
 
