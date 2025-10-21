@@ -38,6 +38,10 @@
   "devDependencies": {
     "vite": "^5.0.0",
     "sharp": "^0.33.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/yourusername/ghost-match-game.git"
   }
 }
 ```
@@ -74,6 +78,19 @@ export default defineConfig({
         },
       },
     },
+    
+    // 代码压缩配置
+    minify: 'terser',
+    terserOptions: {
+      compress: {
+        drop_console: true, // 生产环境移除 console
+        drop_debugger: true,
+      },
+    },
+    
+    // 资源优化
+    assetsInlineLimit: 4096, // 小于 4KB 的资源内联为 base64
+    chunkSizeWarningLimit: 1000, // chunk 大小警告阈值（KB）
   },
   
   // 路径别名（可选）

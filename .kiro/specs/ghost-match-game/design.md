@@ -2,13 +2,13 @@
 
 ## 概述
 
-小鬼消消乐是一款基于 PixiJS v8.0 的浏览器消除类游戏，使用模块化、事件驱动的架构设计。系统分为五个核心模块：游戏引擎、渲染引擎（基于 PixiJS）、输入管理器、状态管理器和事件总线。每个模块职责单一，通过事件系统进行松耦合通信。Node.js 仅用于开发服务器（Vite），游戏逻辑完全运行在浏览器端。
+小鬼消消乐是一款基于 PixiJS v8.14.0 的浏览器消除类游戏，使用模块化、事件驱动的架构设计。系统分为五个核心模块：游戏引擎、渲染引擎（基于 PixiJS）、输入管理器、状态管理器和事件总线。每个模块职责单一，通过事件系统进行松耦合通信。Node.js 仅用于开发服务器（Vite）和资源构建工具，游戏逻辑完全运行在浏览器端。
 
 ### 技术选型
 
 #### 游戏引擎/框架选择
 
-经过对主流HTML5游戏引擎的调研和工作量评估，本项目选择**PixiJS v8.0**作为渲染引擎。这个决策基于以下考虑：
+经过对主流HTML5游戏引擎的调研和工作量评估，本项目选择**PixiJS v8.14.0**作为渲染引擎。这个决策基于以下考虑：
 
 **主流引擎对比**：
 
@@ -74,6 +74,7 @@
   - **代码规范**: ESLint（可选）
   - **测试框架**: Node.js 内置 test runner（Node 18+）用于逻辑测试
   - **构建工具**: Vite（生产环境打包优化）
+  - **图像处理**: sharp v0.33.0（SVG 转 PNG，跨平台兼容）
 
 - **模块加载策略**:
   - 使用 ES6 原生模块系统（`import/export`）
@@ -87,14 +88,16 @@
   // package.json
   {
     "dependencies": {
-      "pixi.js": "^8.14.0"  // PixiJS 渲染引擎（最新稳定版）
+      "pixi.js": "^8.14.0"  // PixiJS 渲染引擎（最新稳定版 2024）
     },
     "devDependencies": {
       "vite": "^5.0.0",     // 开发服务器和构建工具
-      "sharp": "^0.33.0"    // 图像处理工具（用于 SVG 转 PNG）
+      "sharp": "^0.33.0"    // 图像处理工具（SVG 转 PNG，替代过时的 svg2png）
     }
   }
   ```
+  
+  **注意**：不使用 `svg2png` 包，因为它已过时（最后更新2016年）且依赖 PhantomJS，在现代 Node.js 环境中有兼容性问题。sharp 是现代、高性能、跨平台的替代方案。
 
 - **开发服务器配置**:
   使用 Vite 作为开发服务器（推荐方案）：
@@ -129,8 +132,9 @@
   - ⚡ 极速热更新（HMR）
   - 📦 自动处理 node_modules 导入
   - 🔧 零配置开箱即用
-  - 🚀 生产构建优化（代码分割、压缩）
+  - 🚀 生产构建优化（代码分割、压缩、Tree-shaking）
   - 🎯 原生 ES 模块支持
+  - 🔥 开发环境按需编译（启动速度快）
 
 - **浏览器兼容性**:
   - Chrome 90+
@@ -480,8 +484,15 @@ class MatchDetector {
 **优化的无可用移动检测算法**:
 ```javascript
 hasValidMoves(board) {
-  // 优化策略：提前终止，找到一个有效移动即返回
+  // 优化策略1：提前终止，找到一个有效移动即返回
+  // 优化策略2：使用缓存避免重复计算
   const { rows, cols } = board;
+  
+  // 检查缓存
+  const boardHash = this.getBoardHash(board);
+  if (this.validMovesCache && this.boardStateHash === boardHash) {
+    return this.validMovesCache;
+  }
   
   // 遍历所有可能的交换
   for (let y = 0; y < rows; y++) {
@@ -512,13 +523,37 @@ hasValidMoves(board) {
         board.swapTiles({ x, y }, adj);
         
         if (hasMatch) {
+          // 缓存结果
+          this.validMovesCache = true;
+          this.boardStateHash = boardHash;
           return true; // 找到有效移动，立即返回
         }
       }
     }
   }
   
+  // 缓存结果
+  this.validMovesCache = false;
+  this.boardStateHash = boardHash;
   return false; // 无有效移动
+}
+
+// 生成游戏板哈希值（用于缓存）
+getBoardHash(board) {
+  let hash = '';
+  for (let y = 0; y < board.rows; y++) {
+    for (let x = 0; x < board.cols; x++) {
+      const tile = board.getTile(x, y);
+      hash += tile ? tile.type : '-';
+    }
+  }
+  return hash;
+}
+
+// 清除缓存（在游戏板变化时调用）
+clearCache() {
+  this.validMovesCache = null;
+  this.boardStateHash = null;
 }
 
 // 快速检查指定位置是否有匹配（只检查该位置，不扫描整个棋盘）
@@ -885,17 +920,22 @@ assets/svg/
 npm run build:assets
 # 这会执行 scripts/convert-svg.js 脚本
 # 使用 sharp 库将所有 SVG 转换为 PNG (128x128)
+# sharp 优势：
+#   - 高性能（基于 libvips）
+#   - 跨平台兼容（Windows/Mac/Linux）
+#   - 支持透明度和高质量输出
+#   - 活跃维护，社区支持好
 
 # 3. 生成的PNG资源
 assets/images/
   ├── ghosts/
-  │   ├── ghost-red.png      (128x128)
+  │   ├── ghost-red.png      (128x128, 透明背景)
   │   ├── ghost-blue.png
   │   ├── ghost-yellow.png
   │   ├── ghost-green.png
   │   └── ghost-purple.png
   └── special/
-      ├── bomb.png           (128x128)
+      ├── bomb.png           (128x128, 透明背景)
       ├── color-bomb.png
       ├── row-clear.png
       └── col-clear.png
@@ -911,9 +951,10 @@ class TileTextureFactory {
     this.config = config;
     this.textures = new Map();
     this.isLoaded = false;
+    this.loadProgress = 0;
   }
   
-  async init() {
+  async init(onProgress) {
     // 定义资源清单（使用 Vite 的相对路径）
     const assets = [
       // 普通图标
@@ -932,7 +973,18 @@ class TileTextureFactory {
     
     try {
       // 批量加载资源（PixiJS Assets API）
-      await PIXI.Assets.load(assets.map(a => a.src));
+      // 添加加载进度回调
+      const promises = assets.map((asset, index) => 
+        PIXI.Assets.load(asset.src).then(texture => {
+          this.loadProgress = ((index + 1) / assets.length) * 100;
+          if (onProgress) {
+            onProgress(this.loadProgress);
+          }
+          return { alias: asset.alias, texture };
+        })
+      );
+      
+      const results = await Promise.all(promises);
       
       // 缓存纹理到 Map（方便快速访问）
       this.textures.set('type0', PIXI.Assets.get('/assets/images/ghosts/ghost-red.png'));
@@ -950,7 +1002,43 @@ class TileTextureFactory {
       console.log('✅ All textures loaded successfully');
     } catch (error) {
       console.error('❌ Failed to load textures:', error);
-      throw new Error('Texture loading failed');
+      
+      // 错误处理：尝试重新加载失败的资源
+      await this.retryFailedAssets(assets);
+    }
+  }
+  
+  async retryFailedAssets(assets, maxRetries = 3) {
+    console.log('🔄 Retrying failed assets...');
+    
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        // 检查哪些资源加载失败
+        const failedAssets = assets.filter(asset => 
+          !PIXI.Assets.cache.has(asset.src)
+        );
+        
+        if (failedAssets.length === 0) {
+          console.log('✅ All assets loaded after retry');
+          return;
+        }
+        
+        console.log(`Retry attempt ${attempt}/${maxRetries} for ${failedAssets.length} assets`);
+        
+        // 重新加载失败的资源
+        await Promise.all(
+          failedAssets.map(asset => PIXI.Assets.load(asset.src))
+        );
+        
+      } catch (error) {
+        if (attempt === maxRetries) {
+          console.error('❌ Failed to load assets after retries:', error);
+          throw new Error('Critical: Asset loading failed after retries');
+        }
+        
+        // 等待后重试
+        await new Promise(resolve => setTimeout(resolve, 1000 * attempt));
+      }
     }
   }
   
@@ -1195,9 +1283,18 @@ class ErrorHandler {
 ### 单元测试
 
 **测试策略**:
-- **目标覆盖率**: 50%（重点测试核心逻辑）
+- **目标覆盖率**: 
+  - 核心逻辑模块（BoardManager, MatchDetector）：80%+
+  - 游戏引擎（GameEngine）：60%+
+  - 渲染和动画模块：手动测试为主
+  - 总体覆盖率：40-50%
 - **测试工具**: Node.js 内置 test runner (v18+)
 - **测试重点**: 游戏逻辑模块，渲染和动画主要靠手动测试
+- **测试类型**:
+  - 单元测试：核心算法和数据结构
+  - 集成测试：模块间交互和事件流
+  - 性能测试：匹配检测、动画性能
+  - 手动测试：视觉效果、用户体验
 
 **测试模块**:
 - `BoardManager`: 测试游戏板操作（创建、交换、移除）
@@ -1480,9 +1577,7 @@ ghost-match-game/
     "preview": "vite preview",
     "test": "node --test tests/unit/**/*.test.js",
     "test:watch": "node --test --watch tests/unit/**/*.test.js",
-    "build:assets": "npm run build:ghosts && npm run build:special",
-    "build:ghosts": "svg2png assets/svg/ghosts/*.svg -o assets/images/ghosts -w 128 -h 128",
-    "build:special": "svg2png assets/svg/special/*.svg -o assets/images/special -w 128 -h 128"
+    "build:assets": "node scripts/convert-svg.js"
   },
   "keywords": ["game", "match-3", "pixi.js", "puzzle", "browser-game"],
   "author": "",
@@ -1491,11 +1586,11 @@ ghost-match-game/
     "node": ">=18.0.0"
   },
   "dependencies": {
-    "pixi.js": "^8.0.0"
+    "pixi.js": "^8.14.0"
   },
   "devDependencies": {
     "vite": "^5.0.0",
-    "svg2png": "^4.1.1"
+    "sharp": "^0.33.0"
   }
 }
 ```

@@ -5,9 +5,10 @@
 **项目名称**: 小鬼消消乐 (Ghost Match Game)  
 **项目类型**: 基于 PixiJS 的浏览器消除类益智游戏  
 **目标平台**: 现代浏览器（Chrome 90+, Firefox 88+, Safari 14+, Edge 90+）  
-**开发工具**: Node.js 18+ (仅用于开发服务器)  
-**核心技术**: PixiJS v8.14.0 (通过 npm 安装) + ES6 Modules  
+**开发工具**: Node.js 18+ (仅用于开发服务器和资源构建)  
+**核心技术**: PixiJS v8.14.0 (通过 npm 安装) + ES6 Modules + Vite  
 **运行环境**: 浏览器端（游戏逻辑完全在客户端运行）  
+**图像处理**: sharp v0.33.0 (SVG 转 PNG，跨平台兼容)  
 
 ## 🎯 游戏玩法
 
@@ -212,6 +213,8 @@ board: { tileTypes: 6 }  // 增加到6种
 scoring: { comboMultiplier: 2.0 }  // 提高连锁倍数
 ```
 
+详细配置说明请参考 `config-example.md`。
+
 ## 🎓 学习价值
 
 本项目适合学习：
@@ -229,12 +232,12 @@ scoring: { comboMultiplier: 2.0 }  // 提高连锁倍数
 |------|------|------|---------|
 | **PixiJS 学习曲线** | 中 | 中 | 提前学习官方文档和示例，从简单功能开始 |
 | **浏览器兼容性** | 低 | 低 | PixiJS 自动降级到 Canvas，支持广泛 |
-| **性能问题** | 中 | 低 | 使用对象池、纹理复用、限制并发动画数量（最多20个） |
-| **资源加载失败** | 高 | 中 | 添加加载失败重试、错误提示、降级方案 |
+| **性能问题** | 中 | 低 | 使用对象池、纹理复用、限制并发动画数量、优化算法 |
+| **资源加载失败** | 高 | 中 | 添加加载失败重试（最多3次）、错误提示、降级方案 |
 | **动画卡顿** | 中 | 中 | 使用 PixiJS Ticker、优化补间算法、限制动画复杂度 |
 | **内存泄漏** | 中 | 低 | 正确销毁精灵和纹理、使用 Chrome DevTools 监控 |
-| **测试覆盖不足** | 低 | 低 | 降低覆盖率目标至50%，重点测试核心逻辑 |
-| **SVG转PNG失败** | 中 | 低 | 使用 sharp 库（跨平台兼容），提供错误提示和重试机制 |
+| **测试覆盖不足** | 低 | 低 | 核心逻辑80%+，总体40-50%，重点测试关键算法 |
+| **SVG转PNG失败** | 低 | 低 | 使用 sharp 库（现代、跨平台），提供错误提示和重试机制 |
 
 ## 🚀 部署指南
 
@@ -314,12 +317,36 @@ server {
 
 ## 📞 支持
 
-如有问题，请查阅：
-1. **design.md** - 详细设计文档和技术选型
-2. **tasks.md** - 任务分解和实现细节
-3. **event-flow.md** - 事件交互流程图
-4. **startup-files.md** - 项目启动文件示例
-5. **config-example.md** - 配置文件说明
+### 📚 文档导航
+
+#### 核心文档
+1. **SUMMARY.md**（本文档）- 项目总览和快速开始
+2. **QUICK-REFERENCE.md** - 快速参考（命令、API、事件列表）⭐ 推荐
+3. **requirements.md** - 需求文档（12个需求，验收标准）
+4. **design.md** - 详细设计文档和技术选型
+5. **tasks.md** - 任务分解和实现细节（33个任务）
+
+#### 流程和配置
+6. **event-flow.md** - 事件交互流程图
+7. **config-example.md** - 配置文件说明和示例
+8. **startup-files.md** - 项目启动文件示例
+
+#### 设计和部署
+9. **visual-design-guide.md** - 视觉设计规范和资源制作指南
+10. **deployment-guide.md** - 部署、优化和监控指南
+
+#### 更新记录
+11. **CHANGELOG.md** - 更新日志和版本历史
+
+### 🎯 快速查找
+
+- **快速开始** → SUMMARY.md 或 QUICK-REFERENCE.md
+- **API参考** → QUICK-REFERENCE.md
+- **事件列表** → QUICK-REFERENCE.md 或 event-flow.md
+- **配置参数** → config-example.md 或 QUICK-REFERENCE.md
+- **设计图标** → visual-design-guide.md
+- **部署项目** → deployment-guide.md
+- **查看更新** → CHANGELOG.md
 
 ## 🔗 相关资源
 
