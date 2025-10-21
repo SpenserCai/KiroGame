@@ -147,6 +147,11 @@ class Game {
    * 设置事件监听器
    */
   setupEventListeners() {
+    // 输入启用事件 - 清理所有选中动画
+    this.eventBus.on('input:enabled', () => {
+      this.animationController.stopAllSelections();
+    });
+
     // 图标选中事件
     this.eventBus.on('tile:select', ({ tile }) => {
       this.renderEngine.highlightTile(tile);
@@ -175,13 +180,9 @@ class Game {
     this.eventBus.on('tile:swap:start', (data) => {
       const { tile1, tile2 } = data;
       
-      // 停止选中动画
+      // 获取精灵对象
       const sprite1 = this.renderEngine.getTileSprite(tile1.id);
       const sprite2 = this.renderEngine.getTileSprite(tile2.id);
-      
-      if (sprite1) {
-        this.animationController.stopSelection(sprite1);
-      }
       
       // 传递精灵信息给游戏引擎
       this.gameEngine.handleSwap({
@@ -231,9 +232,15 @@ class Game {
       }
     });
 
-    // 图标移除开始事件（动画系统会处理）
-    this.eventBus.on('tile:remove:start', () => {
-      // 动画控制器会处理消除动画
+    // 图标移除开始事件
+    this.eventBus.on('tile:remove:start', ({ tiles }) => {
+      // ✅ 停止被移除图标的选中动画
+      tiles.forEach(tile => {
+        const sprite = this.renderEngine.getTileSprite(tile.id);
+        if (sprite) {
+          this.animationController.stopSelection(sprite);
+        }
+      });
     });
 
     // 图标移除完成事件
@@ -264,8 +271,14 @@ class Game {
     this.eventBus.on('tile:spawn:start', ({ tiles }) => {
       // 创建新精灵（动画控制器会处理生成动画）
       tiles.forEach(tile => {
-        const sprite = this.renderEngine.createTileSprite(tile, this.textureFactory);
-        this.inputManager.addSpriteInteraction(sprite);
+        try {
+          const sprite = this.renderEngine.createTileSprite(tile, this.textureFactory);
+          if (sprite) {
+            this.inputManager.addSpriteInteraction(sprite);
+          }
+        } catch (error) {
+          console.error(`❌ 创建精灵失败 (${tile.x}, ${tile.y}):`, error);
+        }
       });
     });
 

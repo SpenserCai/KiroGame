@@ -97,7 +97,10 @@ export class InputManager {
     const isAdjacent = this.isAdjacent(tile1, tile2);
 
     if (isAdjacent) {
-      // 相邻：触发交换
+      // 相邻：先取消选中，然后触发交换
+      this.eventBus.emit(GameEvents.TILE_DESELECT, { tile: tile1 });
+      this.selectedTile = null;
+      
       this.eventBus.emit(GameEvents.TILE_SWAP_START, { 
         tile1, 
         tile2,
@@ -105,7 +108,6 @@ export class InputManager {
         pos2: { x: tile2.x, y: tile2.y }
       });
       console.log(`🔄 交换请求: (${tile1.x}, ${tile1.y}) <-> (${tile2.x}, ${tile2.y})`);
-      this.selectedTile = null;
     } else {
       // 不相邻：取消选中第一个，选中第二个
       this.eventBus.emit(GameEvents.TILE_DESELECT, { tile: tile1 });
@@ -167,7 +169,13 @@ export class InputManager {
    */
   disable() {
     this.isEnabled = false;
-    this.selectedTile = null;
+    
+    // 如果有选中的图标，发出取消选中事件
+    if (this.selectedTile) {
+      this.eventBus.emit(GameEvents.TILE_DESELECT, { tile: this.selectedTile });
+      this.selectedTile = null;
+    }
+    
     console.log('🚫 输入已禁用');
   }
 

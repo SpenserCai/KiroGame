@@ -259,50 +259,54 @@ export class AnimationController {
   }
 
   /**
-   * 选中动画（循环脉冲效果）
+   * 选中动画（微小脉冲，不放大）
    * @param {PIXI.Sprite} sprite - 精灵对象
    */
   animateSelection(sprite) {
-    // 如果已经有选中动画，先停止
-    this.stopSelection(sprite);
+    if (!sprite) {
+      return;
+    }
     
-    // 创建脉冲动画（放大 -> 缩小，循环）
-    const createPulseTween = () => {
-      const tween = new Tween(
-        sprite.scale,
-        { x: 1.1, y: 1.1 },
-        300,
-        'easeInOutQuad'
-      );
+    // ✅ 先停止所有其他精灵的选中动画
+    this.stopAllSelections();
+    
+    // 确保从原始大小开始
+    sprite.scale.set(1.0);
+    
+    // 标记该精灵正在播放选中动画
+    this.selectionTweens.set(sprite, true);
+    
+    // ✅ 微小脉冲循环（0.95-1.0，不放大）
+    const pulse = () => {
+      if (!this.selectionTweens.has(sprite)) {
+        return;
+      }
       
-      this._addTween(tween);
+      // 缩小到 0.95
+      const shrinkTween = new Tween(sprite.scale, { x: 0.95, y: 0.95 }, 400, 'easeInOutQuad');
+      this._addTween(shrinkTween);
       
-      // 动画完成后创建反向动画
-      tween.promise.then(() => {
-        if (this.selectionTweens.has(sprite)) {
-          const reverseTween = new Tween(
-            sprite.scale,
-            { x: 1.0, y: 1.0 },
-            300,
-            'easeInOutQuad'
-          );
-          
-          this._addTween(reverseTween);
-          
-          // 反向动画完成后继续循环
-          reverseTween.promise.then(() => {
-            if (this.selectionTweens.has(sprite)) {
-              createPulseTween();
-            }
-          });
+      shrinkTween.promise.then(() => {
+        if (!this.selectionTweens.has(sprite)) {
+          sprite.scale.set(1.0);
+          return;
         }
+        
+        // 恢复到 1.0
+        const expandTween = new Tween(sprite.scale, { x: 1.0, y: 1.0 }, 400, 'easeInOutQuad');
+        this._addTween(expandTween);
+        
+        expandTween.promise.then(() => {
+          pulse(); // 继续循环
+        }).catch(() => {
+          sprite.scale.set(1.0);
+        });
+      }).catch(() => {
+        sprite.scale.set(1.0);
       });
-      
-      return tween;
     };
     
-    const tween = createPulseTween();
-    this.selectionTweens.set(sprite, tween);
+    pulse();
   }
 
   /**
@@ -310,13 +314,35 @@ export class AnimationController {
    * @param {PIXI.Sprite} sprite - 精灵对象
    */
   stopSelection(sprite) {
-    if (this.selectionTweens.has(sprite)) {
-      const tween = this.selectionTweens.get(sprite);
-      tween.stop();
-      this.selectionTweens.delete(sprite);
-      
-      // 恢复原始缩放
+    if (!sprite) {
+      return;
+    }
+    
+    // 先删除标记，防止循环继续
+    const hadSelection = this.selectionTweens.has(sprite);
+    this.selectionTweens.delete(sprite);
+    
+    // 停止所有与该精灵的 scale 相关的补间动画
+    let stoppedCount = 0;
+    for (let i = this.activeTweens.length - 1; i >= 0; i--) {
+      const tween = this.activeTweens[i];
+      // 检查是否是该精灵的 scale 动画
+      if (tween.target === sprite.scale) {
+        tween.stop();
+        this.activeTweens.splice(i, 1);
+        stoppedCount++;
+      }
+    }
+    
+    // ✅ 关键：立即恢复原始缩放（无论精灵当前处于什么状态）
+    if (sprite.scale) {
+      const currentScale = sprite.scale.x;
       sprite.scale.set(1.0);
+      
+      // 调试日志（可选）
+      if (hadSelection && currentScale !== 1.0) {
+        console.log(`🔄 恢复精灵缩放: ${currentScale.toFixed(2)} -> 1.0 (停止了 ${stoppedCount} 个动画)`);
+      }
     }
   }
 
@@ -337,15 +363,27 @@ export class AnimationController {
     this.activeTweens = [];
     
     // 停止所有选中动画
-    this.selectionTweens.forEach((tween, sprite) => {
-      tween.stop();
-      sprite.scale.set(1.0);
+    this.selectionTweens.forEach((value, sprite) => {
+      if (sprite && sprite.scale) {
+        sprite.scale.set(1.0);
+      }
     });
     this.selectionTweens.clear();
     
     this.animationCount = 0;
     
     console.log('🛑 所有动画已停止');
+  }
+
+  /**
+   * 停止所有选中动画
+   */
+  stopAllSelections() {
+    // 复制 keys 以避免在迭代时修改 Map
+    const sprites = Array.from(this.selectionTweens.keys());
+    sprites.forEach(sprite => {
+      this.stopSelection(sprite);
+    });
   }
 
   /**
