@@ -5,6 +5,7 @@
 
 import * as PIXI from 'pixi.js';
 import { GameConfig } from '../config.js';
+import { ParticleEffects } from './ParticleEffects.js';
 
 export class RenderEngine {
   constructor(containerElement, config, eventBus) {
@@ -28,6 +29,9 @@ export class RenderEngine {
     
     // 选中效果图形
     this.selectionGraphics = null;
+    
+    // 粒子效果管理器
+    this.particleEffects = null;
     
     // 初始化状态
     this.isInitialized = false;
@@ -58,6 +62,18 @@ export class RenderEngine {
 
       // 创建背景
       this.createBackground();
+
+      // 创建粒子效果管理器
+      this.particleEffects = new ParticleEffects(this.app, this.config);
+      // 将粒子容器添加到特效层之上
+      this.app.stage.addChild(this.particleEffects.particleContainer);
+
+      // 在 ticker 中更新粒子
+      this.app.ticker.add((ticker) => {
+        if (this.particleEffects) {
+          this.particleEffects.update(ticker.deltaMS);
+        }
+      });
 
       // 监听窗口大小变化
       window.addEventListener('resize', () => this.resize());

@@ -97,6 +97,51 @@ export const GameConfig = {
     matchDetectionTimeoutMS: 5
   },
 
+  // 粒子效果配置
+  particles: {
+    enabled: true,                    // 是否启用粒子效果
+    maxParticles: 10000,              // 最大粒子数
+    
+    explosion: {
+      count: 25,                      // 爆炸粒子数量
+      lifetime: 0.5,                  // 生命周期（秒）
+      speed: { min: 100, max: 200 },  // 初速度范围（像素/秒）
+      gravity: 200,                   // 重力加速度（像素/秒²）
+      size: { min: 4, max: 8 }        // 粒子大小范围（像素）
+    },
+    
+    combo: {
+      baseCount: 10,                  // 基础粒子数
+      countPerCombo: 10,              // 每连锁增加的粒子数
+      lifetime: 0.8,                  // 生命周期（秒）
+      speed: { min: 150, max: 300 }   // 初速度范围（像素/秒）
+    },
+    
+    special: {
+      bomb: {
+        count: 60,
+        lifetime: 0.6,
+        speed: { min: 200, max: 400 }
+      },
+      colorBomb: {
+        count: 120,
+        lifetime: 1.0,
+        speed: { min: 100, max: 300 }
+      },
+      lineClear: {
+        count: 40,
+        lifetime: 0.5,
+        speed: { min: 300, max: 500 }
+      }
+    },
+    
+    ambient: {
+      count: 15,                      // 背景粒子数量
+      lifetime: 5.0,                  // 生命周期（秒）
+      speed: { min: 20, max: 50 }     // 下落速度（像素/秒）
+    }
+  },
+
   // 调试配置
   debug: {
     enabled: false,         // 是否启用调试模式
