@@ -44,7 +44,7 @@
 
 ## 第二阶段：美术资源准备和PixiJS渲染引擎
 
-- [ ] 5. 设计和生成图标资源
+- [x] 5. 设计和生成图标资源
   - 创建 scripts/convert-svg.js 脚本，使用 sharp 库实现 SVG 转 PNG 功能（替代过时的 svg2png）
   - 脚本功能：自动扫描 assets/svg/ 目录，转换所有 SVG 为 128x128 PNG，保持透明度
   - 使用 Figma、Illustrator 或其他矢量工具设计 5 种普通小鬼图标 SVG（128x128px，透明背景）
@@ -58,7 +58,7 @@
   - sharp 优势：高性能、跨平台兼容、活跃维护
   - _需求: 1.4, 1.6, 6.1, 9.4_
 
-- [ ] 6. 实现 PixiJS 渲染引擎基础
+- [x] 6. 实现 PixiJS 渲染引擎基础
   - 创建 src/rendering/RenderEngine.js 实现渲染引擎
   - 在构造函数中接收容器元素、配置和事件总线
   - 实现 init() 初始化 PIXI.Application（设置宽高、背景色、抗锯齿、分辨率）
@@ -70,7 +70,7 @@
   - 验证：浏览器中能看到 PixiJS 渲染的背景网格，调整窗口大小能自适应
   - _需求: 1.4, 9.5_
 
-- [ ] 7. 实现图标纹理加载和精灵系统
+- [x] 7. 实现图标纹理加载和精灵系统
   - 创建 src/rendering/TileTextureFactory.js 实现图标纹理工厂
   - 实现 init() 方法使用 PIXI.Assets.load() 批量加载所有 PNG 资源（使用 Vite 的绝对路径 /assets/images/...）
   - 定义资源清单（普通图标 5 个 + 特殊图标 4 个）
@@ -86,7 +86,7 @@
   - 验证：游戏板上能看到 5 种不同的小鬼图标精灵，点击能看到高亮边框，加载进度正确显示
   - _需求: 1.6, 6.1, 9.4_
 
-- [ ] 8. 实现输入管理器（基于 PixiJS 事件系统）
+- [x] 8. 实现输入管理器（基于 PixiJS 事件系统）
   - 创建 src/input/InputManager.js 实现输入管理器
   - 在构造函数中接收 PixiJS 应用、配置和事件总线
   - 为每个图标精灵设置 eventMode='static' 和 cursor='pointer'（PixiJS v8 新 API）

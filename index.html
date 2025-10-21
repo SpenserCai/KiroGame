@@ -12,31 +12,65 @@
     }
 
     body {
-      font-family: 'Arial', sans-serif;
+      font-family: 'Arial', 'Microsoft YaHei', sans-serif;
       background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
       display: flex;
+      flex-direction: column;
       justify-content: center;
       align-items: center;
       min-height: 100vh;
       overflow: hidden;
     }
 
+    h1 {
+      color: white;
+      font-size: 2.5rem;
+      margin-bottom: 20px;
+      text-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+      animation: float 3s ease-in-out infinite;
+    }
+
+    @keyframes float {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-10px); }
+    }
+
     #game-container {
-      position: relative;
-      box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 20px;
+      padding: 20px;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+      backdrop-filter: blur(10px);
+      border: 2px solid rgba(255, 255, 255, 0.2);
+    }
+
+    canvas {
+      display: block;
       border-radius: 10px;
-      overflow: hidden;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+    }
+
+    .info {
+      color: white;
+      text-align: center;
+      margin-top: 20px;
+      font-size: 0.9rem;
+      opacity: 0.8;
     }
 
     #loading {
-      position: absolute;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%);
-      text-align: center;
-      color: white;
-      font-size: 24px;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.8);
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
       z-index: 1000;
+      color: white;
     }
 
     #loading.hidden {
@@ -44,28 +78,51 @@
     }
 
     .spinner {
-      border: 4px solid rgba(255, 255, 255, 0.3);
-      border-top: 4px solid white;
+      width: 50px;
+      height: 50px;
+      border: 5px solid rgba(255, 255, 255, 0.3);
+      border-top-color: white;
       border-radius: 50%;
-      width: 40px;
-      height: 40px;
       animation: spin 1s linear infinite;
-      margin: 20px auto;
+      margin-bottom: 20px;
     }
 
     @keyframes spin {
-      0% { transform: rotate(0deg); }
-      100% { transform: rotate(360deg); }
+      to { transform: rotate(360deg); }
+    }
+
+    #loading-text {
+      font-size: 1.2rem;
+      margin-top: 10px;
     }
   </style>
 </head>
 <body>
-  <div id="game-container">
-    <div id="loading">
-      <div class="spinner"></div>
-      <p>加载中...</p>
-    </div>
+  <!-- 加载界面 -->
+  <div id="loading">
+    <div class="spinner"></div>
+    <div id="loading-text">加载中...</div>
   </div>
+
+  <!-- 游戏标题 -->
+  <h1>👻 小鬼消消乐 👻</h1>
+
+  <!-- 游戏容器 -->
+  <div id="game-container"></div>
+
+  <!-- 提示信息 -->
+  <div class="info">
+    💡 点击相邻的小鬼进行交换，形成三个或更多相同的小鬼即可消除
+  </div>
+
   <script type="module" src="/src/main.js"></script>
+  <script>
+    // 隐藏加载界面
+    window.addEventListener('load', () => {
+      setTimeout(() => {
+        document.getElementById('loading').classList.add('hidden');
+      }, 1000);
+    });
+  </script>
 </body>
 </html>
