@@ -110,6 +110,28 @@ export class Tween {
     
     this.elapsed += deltaTime;
     const progress = Math.min(this.elapsed / this.duration, 1);
+    
+    // ✅ 如果进度达到 1，直接设置最终值，不再计算缓动
+    if (progress >= 1) {
+      this.isComplete = true;
+      
+      // ✅ 确保最终值精确（使用访问器）
+      for (let key in this.endProps) {
+        const accessor = this.propAccessors[key];
+        if (accessor) {
+          accessor.set(this.endProps[key]);
+        }
+      }
+      
+      // 解析 Promise
+      if (this._resolvePromise) {
+        this._resolvePromise(this.target);
+      }
+      
+      return true;
+    }
+    
+    // 计算缓动进度
     const easedProgress = this.easing(progress);
     
     // 更新目标对象的属性（使用访问器）
@@ -121,24 +143,6 @@ export class Tween {
       if (start !== undefined && end !== undefined && accessor) {
         const value = start + (end - start) * easedProgress;
         accessor.set(value);
-      }
-    }
-    
-    // 检查是否完成
-    if (progress >= 1) {
-      this.isComplete = true;
-      
-      // 确保最终值精确（使用访问器）
-      for (let key in this.endProps) {
-        const accessor = this.propAccessors[key];
-        if (accessor) {
-          accessor.set(this.endProps[key]);
-        }
-      }
-      
-      // 解析 Promise
-      if (this._resolvePromise) {
-        this._resolvePromise(this.target);
       }
     }
     

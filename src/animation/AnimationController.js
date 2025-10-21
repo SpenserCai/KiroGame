@@ -208,17 +208,29 @@ export class AnimationController {
    * @returns {Promise} 动画完成的 Promise
    */
   animateSpawn(sprite, duration) {
+    // ✅ 先停止该精灵上所有动画（防止冲突）
+    for (let i = this.activeTweens.length - 1; i >= 0; i--) {
+      const tween = this.activeTweens[i];
+      if (tween.target === sprite || tween.target === sprite.scale) {
+        tween.stop();
+        this.activeTweens.splice(i, 1);
+      }
+    }
+    
+    // ✅ 获取正常缩放值
+    const normalScale = sprite.normalScale || 1.0;
+    
     // 设置初始状态（缩放为0，透明）
     sprite.scale.set(0);
     sprite.alpha = 0;
     
-    // ✅ 改用 easeOutCubic，避免 bounce 可能的数值问题
+    // ✅ 动画到正常缩放值（而不是硬编码的 1.0）
     const tween = new Tween(
       sprite,
       {
-        'scale.x': 1,
-        'scale.y': 1,
-        alpha: 1
+        'scale.x': normalScale,
+        'scale.y': normalScale,
+        alpha: 1.0
       },
       duration,
       'easeOutCubic'
@@ -226,14 +238,14 @@ export class AnimationController {
     
     this._addTween(tween);
     
-    // ✅ 确保动画完成后精确设置为 1.0
+    // ✅ 确保动画完成后精确设置为正常缩放
     return tween.promise.then(() => {
-      sprite.scale.set(1.0);
+      sprite.scale.set(normalScale);
       sprite.alpha = 1.0;
       return sprite;
     }).catch((error) => {
       // 即使动画被中断，也要恢复正常状态
-      sprite.scale.set(1.0);
+      sprite.scale.set(normalScale);
       sprite.alpha = 1.0;
       throw error;
     });
@@ -269,7 +281,7 @@ export class AnimationController {
   }
 
   /**
-   * 选中动画（微小脉冲，不放大）
+   * 选中动画（不改变大小，只通过边框高亮表示）
    * @param {PIXI.Sprite} sprite - 精灵对象
    */
   animateSelection(sprite) {
@@ -280,52 +292,24 @@ export class AnimationController {
     // ✅ 先停止所有其他精灵的选中动画
     this.stopAllSelections();
     
-    // ✅ 停止该精灵上所有与 scale 相关的动画
+    // ✅ 停止该精灵上所有动画
     for (let i = this.activeTweens.length - 1; i >= 0; i--) {
       const tween = this.activeTweens[i];
-      if (tween.target === sprite || tween.target === sprite.scale) {
+      if (tween.target === sprite || tween.target === sprite.scale || tween.target === sprite.position) {
         tween.stop();
         this.activeTweens.splice(i, 1);
       }
     }
     
-    // ✅ 强制设置为原始大小（确保没有残留的缩放）
-    sprite.scale.set(1.0);
+    // ✅ 强制设置为正常缩放（使用 normalScale）
+    const normalScale = sprite.normalScale || 1.0;
+    sprite.scale.set(normalScale);
     
-    // 标记该精灵正在播放选中动画
+    // 标记该精灵正在播放选中动画（虽然现在没有实际动画）
     this.selectionTweens.set(sprite, true);
     
-    // ✅ 微小脉冲循环（0.95-1.0，不放大）
-    const pulse = () => {
-      if (!this.selectionTweens.has(sprite)) {
-        return;
-      }
-      
-      // 缩小到 0.95
-      const shrinkTween = new Tween(sprite.scale, { x: 0.95, y: 0.95 }, 400, 'easeInOutQuad');
-      this._addTween(shrinkTween);
-      
-      shrinkTween.promise.then(() => {
-        if (!this.selectionTweens.has(sprite)) {
-          sprite.scale.set(1.0);
-          return;
-        }
-        
-        // 恢复到 1.0
-        const expandTween = new Tween(sprite.scale, { x: 1.0, y: 1.0 }, 400, 'easeInOutQuad');
-        this._addTween(expandTween);
-        
-        expandTween.promise.then(() => {
-          pulse(); // 继续循环
-        }).catch(() => {
-          sprite.scale.set(1.0);
-        });
-      }).catch(() => {
-        sprite.scale.set(1.0);
-      });
-    };
-    
-    pulse();
+    // ✅ 不播放任何动画，保持原始大小
+    // 选中状态完全由 RenderEngine 的 highlightTile 边框来表示
   }
 
   /**
@@ -337,31 +321,26 @@ export class AnimationController {
       return;
     }
     
-    // 先删除标记，防止循环继续
-    const hadSelection = this.selectionTweens.has(sprite);
+    // 先删除标记
     this.selectionTweens.delete(sprite);
     
-    // 停止所有与该精灵的 scale 相关的补间动画
-    let stoppedCount = 0;
+    // 停止所有与该精灵相关的补间动画
     for (let i = this.activeTweens.length - 1; i >= 0; i--) {
       const tween = this.activeTweens[i];
-      // 检查是否是该精灵的 scale 动画
-      if (tween.target === sprite.scale) {
+      // 检查是否是该精灵的动画（scale 或 position）
+      if (tween.target === sprite.scale || tween.target === sprite.position || tween.target === sprite) {
         tween.stop();
         this.activeTweens.splice(i, 1);
-        stoppedCount++;
       }
     }
     
-    // ✅ 关键：立即恢复原始缩放（无论精灵当前处于什么状态）
+    // ✅ 关键：立即恢复正常缩放（使用 normalScale）
+    const normalScale = sprite.normalScale || 1.0;
     if (sprite.scale) {
-      const currentScale = sprite.scale.x;
-      sprite.scale.set(1.0);
-      
-      // 调试日志（可选）
-      if (hadSelection && currentScale !== 1.0) {
-        console.log(`🔄 恢复精灵缩放: ${currentScale.toFixed(2)} -> 1.0 (停止了 ${stoppedCount} 个动画)`);
-      }
+      sprite.scale.set(normalScale);
+    }
+    if (sprite.alpha !== undefined) {
+      sprite.alpha = 1.0;
     }
   }
 
@@ -381,10 +360,11 @@ export class AnimationController {
     this.activeTweens.forEach(tween => tween.stop());
     this.activeTweens = [];
     
-    // 停止所有选中动画
+    // 停止所有选中动画，恢复正常缩放
     this.selectionTweens.forEach((value, sprite) => {
       if (sprite && sprite.scale) {
-        sprite.scale.set(1.0);
+        const normalScale = sprite.normalScale || 1.0;
+        sprite.scale.set(normalScale);
       }
     });
     this.selectionTweens.clear();

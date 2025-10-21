@@ -147,9 +147,18 @@ class Game {
    * 设置事件监听器
    */
   setupEventListeners() {
-    // 输入启用事件 - 清理所有选中动画
+    // 输入启用事件 - 清理所有选中动画并确保精灵状态正确
     this.eventBus.on('input:enabled', () => {
       this.animationController.stopAllSelections();
+      
+      // ✅ 额外保护：确保所有精灵的缩放和透明度正确（使用 normalScale）
+      this.renderEngine.tileSprites.forEach((sprite) => {
+        if (sprite && sprite.scale && sprite.alpha !== undefined) {
+          const normalScale = sprite.normalScale || 1.0;
+          sprite.scale.set(normalScale);
+          sprite.alpha = 1.0;
+        }
+      });
     });
 
     // 图标选中事件
@@ -263,6 +272,10 @@ class Game {
         const sprite = this.renderEngine.getTileSprite(tile.id);
         if (sprite) {
           this.renderEngine.updateTileSprite(sprite, tile);
+          // ✅ 确保下落后的精灵状态正确（使用 normalScale）
+          const normalScale = sprite.normalScale || 1.0;
+          sprite.scale.set(normalScale);
+          sprite.alpha = 1.0;
         }
       });
     });
@@ -283,8 +296,16 @@ class Game {
     });
 
     // 图标生成完成事件
-    this.eventBus.on('tile:spawn:complete', () => {
-      // 动画已完成
+    this.eventBus.on('tile:spawn:complete', ({ tiles }) => {
+      // ✅ 确保所有新生成的精灵状态正确（使用 normalScale）
+      tiles.forEach(tile => {
+        const sprite = this.renderEngine.getTileSprite(tile.id);
+        if (sprite) {
+          const normalScale = sprite.normalScale || 1.0;
+          sprite.scale.set(normalScale);
+          sprite.alpha = 1.0;
+        }
+      });
     });
 
     // 游戏板稳定事件
