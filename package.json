@@ -1,0 +1,6 @@
+{
+  "dependencies": {
+    "pixi.js": "^8.14.0",
+    "svg2png": "^4.1.1"
+  }
+}

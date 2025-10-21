@@ -213,22 +213,121 @@ scoring: { comboMultiplier: 2.0 }  // 提高连锁倍数
 ## 🎓 学习价值
 
 本项目适合学习：
-- PixiJS游戏开发
-- 事件驱动架构
-- 模块化设计
-- 游戏逻辑实现
-- 动画系统设计
-- 性能优化技巧
+- PixiJS 游戏开发和渲染优化
+- 事件驱动架构设计
+- 模块化设计和依赖管理
+- 游戏逻辑实现（匹配检测、状态机）
+- 动画系统设计（补间、缓动函数）
+- 性能优化技巧（对象池、纹理复用）
+- Vite 现代化开发工作流
+
+## ⚠️ 技术风险评估
+
+| 风险 | 影响 | 概率 | 缓解措施 |
+|------|------|------|---------|
+| **PixiJS 学习曲线** | 中 | 中 | 提前学习官方文档和示例，从简单功能开始 |
+| **浏览器兼容性** | 低 | 低 | PixiJS 自动降级到 Canvas，支持广泛 |
+| **性能问题** | 中 | 低 | 使用对象池、纹理复用、限制并发动画数量 |
+| **资源加载失败** | 高 | 中 | 添加加载失败重试、错误提示、降级方案 |
+| **动画卡顿** | 中 | 中 | 使用 PixiJS Ticker、优化补间算法、限制动画复杂度 |
+| **内存泄漏** | 中 | 低 | 正确销毁精灵和纹理、使用 Chrome DevTools 监控 |
+| **测试覆盖不足** | 低 | 中 | 优先测试核心逻辑（BoardManager、MatchDetector） |
+
+## 🚀 部署指南
+
+### 开发环境
+```bash
+npm run dev
+# 访问 http://localhost:5173
+```
+
+### 生产构建
+```bash
+npm run build
+# 输出到 dist/ 目录
+```
+
+### 部署选项
+
+#### 1. Netlify（推荐）
+```bash
+# 安装 Netlify CLI
+npm install -g netlify-cli
+
+# 部署
+netlify deploy --prod --dir=dist
+```
+
+#### 2. Vercel
+```bash
+# 安装 Vercel CLI
+npm install -g vercel
+
+# 部署
+vercel --prod
+```
+
+#### 3. GitHub Pages
+```bash
+# 修改 vite.config.js 添加 base 路径
+export default defineConfig({
+  base: '/ghost-match-game/',
+  // ...
+});
+
+# 构建并推送到 gh-pages 分支
+npm run build
+git subtree push --prefix dist origin gh-pages
+```
+
+#### 4. 自托管服务器
+```bash
+# 构建
+npm run build
+
+# 将 dist/ 目录上传到服务器
+# 配置 Nginx 或 Apache 指向 dist/index.html
+```
+
+### Nginx 配置示例
+```nginx
+server {
+    listen 80;
+    server_name yourdomain.com;
+    root /var/www/ghost-match-game/dist;
+    index index.html;
+
+    location / {
+        try_files $uri $uri/ /index.html;
+    }
+
+    # 缓存静态资源
+    location ~* \.(js|css|png|jpg|jpeg|gif|ico|svg)$ {
+        expires 1y;
+        add_header Cache-Control "public, immutable";
+    }
+}
+```
 
 ## 📞 支持
 
 如有问题，请查阅：
-1. design.md - 详细设计文档
-2. tasks.md - 任务分解和实现细节
-3. event-flow.md - 事件交互流程
+1. **design.md** - 详细设计文档和技术选型
+2. **tasks.md** - 任务分解和实现细节
+3. **event-flow.md** - 事件交互流程图
+4. **startup-files.md** - 项目启动文件示例
+5. **config-example.md** - 配置文件说明
+
+## 🔗 相关资源
+
+- [PixiJS 官方文档](https://pixijs.com/docs)
+- [PixiJS 示例](https://pixijs.com/examples)
+- [Vite 官方文档](https://vitejs.dev/)
+- [MDN Web Docs - Canvas API](https://developer.mozilla.org/en-US/docs/Web/API/Canvas_API)
 
 ---
 
 **项目状态**: ✅ 设计完成，准备开始实现  
 **最后更新**: 2025-10-21  
-**版本**: 1.0.0
+**版本**: 1.0.0  
+**技术栈**: PixiJS v8.0 + Vite v5.0 + ES6 Modules

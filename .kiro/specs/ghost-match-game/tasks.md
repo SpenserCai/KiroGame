@@ -3,15 +3,16 @@
 ## 第一阶段：基础架构和核心数据结构
 
 - [ ] 1. 创建项目结构和配置文件
-  - 创建package.json定义项目元数据、启动脚本（start、test、dev、build:assets）和依赖（pixi.js: ^8.0.0, svg2png: ^4.1.1）
-  - 创建资源目录结构（assets/svg/ghosts/、assets/svg/special/、assets/images/）
-  - 运行`npm install`安装PixiJS和svg2png依赖
-  - 创建server.js实现简单的开发服务器（正确设置.js文件MIME类型，支持node_modules和assets访问）
-  - 创建index.html作为游戏入口页面，包含游戏容器div、基本样式和`<script type="module">`
-  - 创建src/config.js定义游戏配置对象（游戏板尺寸、图标类型、动画时长、颜色、分数规则、计时器配置、资源路径等）
-  - 创建基本的目录结构（core/、game/、rendering/、input/、animation/、utils/、tests/）
-  - 验证：运行`npm start`能启动服务器，浏览器访问localhost:3000能看到PixiJS初始化的黑色画布
-  - _需求: 1.1, 7.4, 10.1_
+  - 创建 package.json 定义项目元数据、启动脚本（dev、build、preview、test、build:assets）和依赖（pixi.js: ^8.0.0）、开发依赖（vite: ^5.0.0, svg2png: ^4.1.1）
+  - 创建 vite.config.js 配置 Vite 开发服务器（端口 5173、自动打开浏览器、PixiJS 预构建优化）
+  - 创建资源目录结构（assets/svg/ghosts/、assets/svg/special/、assets/images/ghosts/、assets/images/special/）
+  - 运行 `npm install` 安装 PixiJS、Vite 和 svg2png 依赖
+  - 创建 index.html 作为游戏入口页面，包含游戏容器 div、基本样式和 `<script type="module" src="/src/main.js">`
+  - 创建 src/config.js 定义游戏配置对象（游戏板尺寸、图标类型、动画时长、颜色、分数规则、计时器配置、资源路径等）
+  - 创建基本的目录结构（src/core/、src/game/、src/rendering/、src/input/、src/animation/、src/utils/、tests/unit/）
+  - 创建 .gitignore 文件（忽略 node_modules、dist、生成的 PNG 等）
+  - 验证：运行 `npm run dev` 能启动 Vite 服务器，浏览器自动打开 localhost:5173 能看到 PixiJS 初始化的画布
+  - _需求: 1.1, 7.4, 7.6, 7.7, 10.1_
 
 - [ ] 2. 实现事件总线系统
   - 创建src/core/EventBus.js实现发布-订阅模式
@@ -44,45 +45,54 @@
 ## 第二阶段：美术资源准备和PixiJS渲染引擎
 
 - [ ] 5. 设计和生成图标资源
-  - 使用Figma、Illustrator或其他矢量工具设计5种普通小鬼图标SVG（128x128px）
-  - 设计4种特殊图标SVG：炸弹、彩色炸弹、横向消除、纵向消除
-  - 确保所有SVG使用透明背景、居中对齐、适当内边距
-  - 将SVG文件保存到assets/svg/ghosts/和assets/svg/special/目录
-  - 运行`npm run build:assets`将SVG转换为PNG（128x128）
-  - 验证生成的PNG文件质量和透明度
-  - _需求: 1.4, 6.1, 9.4_
+  - 使用 Figma、Illustrator 或其他矢量工具设计 5 种普通小鬼图标 SVG（128x128px，透明背景）
+  - 设计 4 种特殊图标 SVG：炸弹、彩色炸弹、横向消除、纵向消除（带特效光晕）
+  - 确保所有 SVG 使用透明背景、居中对齐、适当内边距（8-16px）
+  - 将 SVG 文件保存到 assets/svg/ghosts/ 和 assets/svg/special/ 目录
+  - 运行 `npm run build:assets` 将 SVG 转换为 PNG（128x128）
+  - 验证生成的 PNG 文件质量、透明度和边缘抗锯齿
+  - 在 assets/images/ 目录创建 .gitkeep 文件保留目录结构
+  - _需求: 1.4, 1.6, 6.1, 9.4_
 
-- [ ] 6. 实现PixiJS渲染引擎基础
-  - 创建src/rendering/RenderEngine.js实现渲染引擎
-  - 实现init()初始化PIXI.Application（设置宽高、背景色、抗锯齿）
-  - 创建场景图层次结构（backgroundLayer、boardLayer、effectLayer、uiLayer）
-  - 实现createBackground()使用PIXI.Graphics绘制游戏板背景网格
-  - 实现gridToScreen()和screenToGrid()坐标转换函数
-  - 验证：浏览器中能看到PixiJS渲染的背景网格
-  - _需求: 1.4_
+- [ ] 6. 实现 PixiJS 渲染引擎基础
+  - 创建 src/rendering/RenderEngine.js 实现渲染引擎
+  - 在构造函数中接收容器元素、配置和事件总线
+  - 实现 init() 初始化 PIXI.Application（设置宽高、背景色、抗锯齿、分辨率）
+  - 将 PixiJS canvas 挂载到指定的 DOM 容器
+  - 创建场景图层次结构（backgroundLayer、boardLayer、effectLayer、uiLayer）使用 PIXI.Container
+  - 实现 createBackground() 使用 PIXI.Graphics 绘制游戏板背景网格和边框
+  - 实现 gridToScreen() 和 screenToGrid() 坐标转换工具函数
+  - 实现 resize() 方法监听窗口大小变化并调整 PixiJS 应用
+  - 验证：浏览器中能看到 PixiJS 渲染的背景网格，调整窗口大小能自适应
+  - _需求: 1.4, 9.5_
 
 - [ ] 7. 实现图标纹理加载和精灵系统
-  - 创建src/rendering/TileTextureFactory.js实现图标纹理工厂
-  - 实现init()方法使用PIXI.Assets批量加载所有PNG资源
-  - 定义资源清单（普通图标5个 + 特殊图标4个）
-  - 实现纹理缓存机制（Map存储，避免重复加载）
-  - 实现getTexture(key)方法获取缓存的纹理
-  - 在RenderEngine中实现createTileSprite()创建图标精灵
-  - 实现updateTileSprite()更新精灵位置和状态
-  - 实现renderBoard()遍历游戏板并创建所有图标精灵，添加到boardLayer
-  - 实现选中状态的高亮效果（使用PIXI.Graphics绘制边框或精灵缩放）
-  - 验证：游戏板上能看到5种不同的小鬼图标精灵
-  - _需求: 6.1, 9.4_
+  - 创建 src/rendering/TileTextureFactory.js 实现图标纹理工厂
+  - 实现 init() 方法使用 PIXI.Assets.load() 批量加载所有 PNG 资源（使用 Vite 的绝对路径 /assets/images/...）
+  - 定义资源清单（普通图标 5 个 + 特殊图标 4 个）
+  - 实现纹理缓存机制（Map 存储，避免重复加载）
+  - 实现 getTexture(key) 方法获取缓存的纹理，添加错误处理
+  - 实现 hasTexture(key) 方法检查纹理是否存在
+  - 在 RenderEngine 中实现 createTileSprite(tile) 创建图标精灵（设置 anchor、size、position、eventMode）
+  - 实现 updateTileSprite(sprite, tile) 更新精灵位置和状态
+  - 实现 renderBoard(board) 遍历游戏板并创建所有图标精灵，添加到 boardLayer
+  - 实现选中状态的高亮效果（使用 PIXI.Graphics 绘制边框，添加到 effectLayer）
+  - 添加加载进度显示（可选，使用 PIXI.Assets 的进度回调）
+  - 验证：游戏板上能看到 5 种不同的小鬼图标精灵，点击能看到高亮边框
+  - _需求: 1.6, 6.1, 9.4_
 
-- [ ] 8. 实现输入管理器（基于PixiJS事件系统）
-  - 创建src/input/InputManager.js实现输入管理器
-  - 为每个图标精灵设置interactive=true和cursor='pointer'
-  - 使用PixiJS的pointerdown事件监听图标点击
+- [ ] 8. 实现输入管理器（基于 PixiJS 事件系统）
+  - 创建 src/input/InputManager.js 实现输入管理器
+  - 在构造函数中接收 PixiJS 应用、配置和事件总线
+  - 为每个图标精灵设置 eventMode='static' 和 cursor='pointer'（PixiJS v8 新 API）
+  - 使用 PixiJS 的 pointerdown 事件监听图标点击
   - 实现图标选中逻辑（第一次点击选中，第二次点击尝试交换）
-  - 通过事件总线发布tile:select和tile:swap:start事件
-  - 实现输入启用/禁用功能（动画期间禁用）
-  - 验证：点击图标能看到选中高亮，点击相邻图标触发交换事件
-  - _需求: 2.1, 2.2_
+  - 检查两个图标是否相邻（水平或垂直）
+  - 通过事件总线发布 tile:select、tile:deselect 和 tile:swap:start 事件
+  - 实现输入启用/禁用功能（订阅 input:enabled 和 input:disabled 事件）
+  - 添加悬停效果（可选，使用 pointerover 和 pointerout 事件）
+  - 验证：点击图标能看到选中高亮，点击相邻图标触发交换事件，点击不相邻图标取消选中
+  - _需求: 2.1, 2.2, 2.3, 2.4_
 
 - [ ] 9. 实现游戏板交换逻辑
   - 在BoardManager中实现isAdjacent()检查两个位置是否相邻（水平或垂直）
@@ -161,26 +171,34 @@
 
 ## 第五阶段：UI和游戏循环
 
-- [ ] 17. 实现游戏主循环（基于PixiJS Ticker）
-  - 在src/main.js中实现游戏入口
-  - 使用PIXI.Application的ticker实现游戏循环
-  - 在ticker回调中调用GameEngine.update(deltaTime)
-  - AnimationController在每帧更新所有补间动画
-  - 计算deltaTime确保动画时间准确（ticker.deltaMS / 1000）
-  - 验证：游戏循环稳定运行，FPS达到60
-  - _需求: 8.3_
+- [ ] 17. 实现游戏主循环（基于 PixiJS Ticker）
+  - 在 src/main.js 中实现游戏入口（从 npm 导入 PixiJS：`import * as PIXI from 'pixi.js'`）
+  - 创建 Game 类封装游戏初始化和生命周期管理
+  - 实现 async init() 方法初始化所有模块（EventBus、GameEngine、RenderEngine、InputManager）
+  - 等待 RenderEngine 和 TileTextureFactory 的资源加载完成
+  - 使用 PIXI.Application 的 ticker 实现游戏循环
+  - 在 ticker 回调中调用 GameEngine.update(deltaTime)，deltaTime = ticker.deltaMS / 1000
+  - AnimationController 在每帧更新所有补间动画
+  - 添加性能监控（可选，显示 FPS：ticker.FPS）
+  - 实现错误处理（try-catch 包裹初始化逻辑）
+  - 导出 game 实例到 window（便于调试）
+  - 验证：游戏循环稳定运行，FPS 达到 60，控制台无错误
+  - _需求: 8.1, 8.3_
 
-- [ ] 18. 实现UI渲染（使用PixiJS Text和Graphics）
-  - 在RenderEngine中实现createUI()方法
-  - 使用PIXI.Text创建分数文本显示（字体、颜色、位置）
-  - 使用PIXI.Text创建计时器文本显示
-  - 实现updateScore(score)方法更新分数显示
-  - 实现updateTimer(time)方法更新计时器显示
-  - 实现分数变化的动画提示效果（使用补间动画缩放文本）
-  - 使用PIXI.Graphics + PIXI.Text创建按钮（开始、暂停、重新开始）
-  - 为按钮添加交互事件（pointerdown、pointerover等）
-  - 实现按钮的悬停和点击视觉反馈
-  - 验证：UI元素正确显示，按钮可点击
+- [ ] 18. 实现 UI 渲染（使用 PixiJS Text 和 Graphics）
+  - 在 RenderEngine 中实现 createUI() 方法
+  - 使用 PIXI.Text 创建分数文本显示（字体、颜色、位置、对齐方式）
+  - 使用 PIXI.Text 创建计时器文本显示（位置在右上角）
+  - 实现 updateScore(score) 方法更新分数显示
+  - 实现 updateTimer(time) 方法更新计时器显示（格式化为 MM:SS）
+  - 实现分数变化的动画提示效果（使用补间动画缩放文本或显示 +分数 浮动文本）
+  - 使用 PIXI.Graphics 绘制按钮背景（圆角矩形）
+  - 使用 PIXI.Text 添加按钮文字（开始、暂停、重新开始）
+  - 将按钮背景和文字组合到 PIXI.Container 中
+  - 为按钮添加交互事件（eventMode='static'、pointerdown、pointerover、pointerout）
+  - 实现按钮的悬停和点击视觉反馈（颜色变化、缩放效果）
+  - 订阅事件总线的 score:update 和 timer:update 事件自动更新 UI
+  - 验证：UI 元素正确显示，按钮可点击，分数和计时器实时更新
   - _需求: 5.5, 6.5, 9.1, 9.2, 10.2_
 
 - [ ] 19. 实现菜单和暂停功能
