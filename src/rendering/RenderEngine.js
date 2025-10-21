@@ -315,6 +315,456 @@ export class RenderEngine {
   }
 
   /**
+   * 创建 UI 元素
+   */
+  createUI() {
+    // 创建分数文本
+    this.scoreText = new PIXI.Text({
+      text: '分数: 0',
+      style: {
+        fontFamily: 'Arial, sans-serif',
+        fontSize: 28,
+        fontWeight: 'bold',
+        fill: 0xFFFFFF,
+        stroke: { color: 0x000000, width: 3 }
+      }
+    });
+    this.scoreText.position.set(20, 20);
+    this.layers.ui.addChild(this.scoreText);
+
+    // 创建 FPS 显示（如果启用调试模式）
+    if (this.config.debug.showFPS) {
+      this.fpsText = new PIXI.Text({
+        text: 'FPS: 60',
+        style: {
+          fontFamily: 'Arial, sans-serif',
+          fontSize: 16,
+          fill: 0x00FF00,
+          stroke: { color: 0x000000, width: 2 }
+        }
+      });
+      this.fpsText.anchor.set(1, 0);
+      this.fpsText.position.set(this.config.rendering.canvasWidth - 20, this.config.rendering.canvasHeight - 30);
+      this.layers.ui.addChild(this.fpsText);
+    }
+
+    // 创建计时器文本
+    this.timerText = new PIXI.Text({
+      text: '时间: 60',
+      style: {
+        fontFamily: 'Arial, sans-serif',
+        fontSize: 28,
+        fontWeight: 'bold',
+        fill: 0xFFFFFF,
+        stroke: { color: 0x000000, width: 3 }
+      }
+    });
+    this.timerText.anchor.set(1, 0);
+    this.timerText.position.set(this.config.rendering.canvasWidth - 20, 20);
+    this.layers.ui.addChild(this.timerText);
+
+    // 创建移动次数文本
+    this.movesText = new PIXI.Text({
+      text: '移动: 0',
+      style: {
+        fontFamily: 'Arial, sans-serif',
+        fontSize: 24,
+        fill: 0xFFFFFF,
+        stroke: { color: 0x000000, width: 2 }
+      }
+    });
+    this.movesText.position.set(20, 60);
+    this.layers.ui.addChild(this.movesText);
+
+    // 创建暂停按钮
+    this.pauseButton = this.createButton('暂停', this.config.rendering.canvasWidth / 2 - 50, 20, 100, 40);
+    this.pauseButton.on('pointerdown', () => {
+      this.eventBus.emit('game:pause');
+      this.showPauseMenu();
+    });
+    this.layers.ui.addChild(this.pauseButton);
+
+    console.log('✅ UI 元素创建完成');
+  }
+
+  /**
+   * 创建按钮
+   * @param {string} text - 按钮文字
+   * @param {number} x - X 坐标
+   * @param {number} y - Y 坐标
+   * @param {number} width - 宽度
+   * @param {number} height - 高度
+   * @returns {PIXI.Container} 按钮容器
+   */
+  createButton(text, x, y, width, height) {
+    const button = new PIXI.Container();
+    button.position.set(x, y);
+    button.eventMode = 'static';
+    button.cursor = 'pointer';
+
+    // 按钮背景
+    const bg = new PIXI.Graphics();
+    bg.roundRect(0, 0, width, height, 8);
+    bg.fill({ color: 0x3498db, alpha: 0.9 });
+    bg.stroke({ color: 0x2980b9, width: 2 });
+    button.addChild(bg);
+
+    // 按钮文字
+    const buttonText = new PIXI.Text({
+      text: text,
+      style: {
+        fontFamily: 'Arial, sans-serif',
+        fontSize: 18,
+        fontWeight: 'bold',
+        fill: 0xFFFFFF
+      }
+    });
+    buttonText.anchor.set(0.5);
+    buttonText.position.set(width / 2, height / 2);
+    button.addChild(buttonText);
+
+    // 悬停效果
+    button.on('pointerover', () => {
+      bg.clear();
+      bg.roundRect(0, 0, width, height, 8);
+      bg.fill({ color: 0x5dade2, alpha: 1 });
+      bg.stroke({ color: 0x2980b9, width: 2 });
+    });
+
+    button.on('pointerout', () => {
+      bg.clear();
+      bg.roundRect(0, 0, width, height, 8);
+      bg.fill({ color: 0x3498db, alpha: 0.9 });
+      bg.stroke({ color: 0x2980b9, width: 2 });
+    });
+
+    // 点击效果
+    button.on('pointerdown', () => {
+      button.scale.set(0.95);
+    });
+
+    button.on('pointerup', () => {
+      button.scale.set(1.0);
+    });
+
+    return button;
+  }
+
+  /**
+   * 更新分数显示
+   * @param {number} score - 当前分数
+   */
+  updateScore(score) {
+    if (this.scoreText) {
+      this.scoreText.text = `分数: ${score}`;
+    }
+  }
+
+  /**
+   * 更新计时器显示
+   * @param {number} time - 剩余时间（秒）
+   */
+  updateTimer(time) {
+    if (this.timerText) {
+      const minutes = Math.floor(time / 60);
+      const seconds = Math.floor(time % 60);
+      this.timerText.text = `时间: ${minutes}:${seconds.toString().padStart(2, '0')}`;
+      
+      // 时间少于10秒时显示红色警告
+      if (time <= this.config.timer.warningTime) {
+        this.timerText.style.fill = 0xFF0000;
+      } else {
+        this.timerText.style.fill = 0xFFFFFF;
+      }
+    }
+  }
+
+  /**
+   * 更新移动次数显示
+   * @param {number} moves - 移动次数
+   */
+  updateMoves(moves) {
+    if (this.movesText) {
+      this.movesText.text = `移动: ${moves}`;
+    }
+  }
+
+  /**
+   * 更新 FPS 显示
+   * @param {number} fps - 当前 FPS
+   */
+  updateFPS(fps) {
+    if (this.fpsText) {
+      this.fpsText.text = `FPS: ${Math.round(fps)}`;
+    }
+  }
+
+  /**
+   * 显示分数增加动画
+   * @param {number} delta - 增加的分数
+   * @param {number} x - X 坐标
+   * @param {number} y - Y 坐标
+   */
+  showScoreDelta(delta, x, y) {
+    const deltaText = new PIXI.Text({
+      text: `+${delta}`,
+      style: {
+        fontFamily: 'Arial, sans-serif',
+        fontSize: 24,
+        fontWeight: 'bold',
+        fill: 0xFFD700,
+        stroke: { color: 0x000000, width: 3 }
+      }
+    });
+    deltaText.anchor.set(0.5);
+    deltaText.position.set(x, y);
+    this.layers.effects.addChild(deltaText);
+
+    // 简单的上浮淡出动画
+    let elapsed = 0;
+    const duration = 1000;
+    const startY = y;
+
+    const animate = (delta) => {
+      elapsed += delta;
+      const progress = elapsed / duration;
+
+      if (progress >= 1) {
+        this.layers.effects.removeChild(deltaText);
+        deltaText.destroy();
+        return;
+      }
+
+      deltaText.position.y = startY - progress * 50;
+      deltaText.alpha = 1 - progress;
+    };
+
+    this.app.ticker.add(animate);
+  }
+
+  /**
+   * 创建开始菜单
+   */
+  createStartMenu() {
+    const menu = new PIXI.Container();
+    menu.label = 'startMenu';
+
+    // 半透明背景
+    const overlay = new PIXI.Graphics();
+    overlay.rect(0, 0, this.config.rendering.canvasWidth, this.config.rendering.canvasHeight);
+    overlay.fill({ color: 0x000000, alpha: 0.7 });
+    menu.addChild(overlay);
+
+    // 标题
+    const title = new PIXI.Text({
+      text: '小鬼消消乐',
+      style: {
+        fontFamily: 'Arial, sans-serif',
+        fontSize: 48,
+        fontWeight: 'bold',
+        fill: 0xFFD700,
+        stroke: { color: 0x000000, width: 5 }
+      }
+    });
+    title.anchor.set(0.5);
+    title.position.set(this.config.rendering.canvasWidth / 2, 200);
+    menu.addChild(title);
+
+    // 开始按钮
+    const startButton = this.createButton(
+      '开始游戏',
+      this.config.rendering.canvasWidth / 2 - 75,
+      350,
+      150,
+      50
+    );
+    startButton.on('pointerdown', () => {
+      this.eventBus.emit('game:start');
+    });
+    menu.addChild(startButton);
+
+    this.startMenu = menu;
+    this.layers.ui.addChild(menu);
+  }
+
+  /**
+   * 隐藏开始菜单
+   */
+  hideStartMenu() {
+    if (this.startMenu) {
+      this.layers.ui.removeChild(this.startMenu);
+      this.startMenu.destroy({ children: true });
+      this.startMenu = null;
+    }
+  }
+
+  /**
+   * 创建暂停菜单
+   */
+  createPauseMenu() {
+    const menu = new PIXI.Container();
+    menu.label = 'pauseMenu';
+
+    // 半透明背景
+    const overlay = new PIXI.Graphics();
+    overlay.rect(0, 0, this.config.rendering.canvasWidth, this.config.rendering.canvasHeight);
+    overlay.fill({ color: 0x000000, alpha: 0.7 });
+    menu.addChild(overlay);
+
+    // 暂停文字
+    const pauseText = new PIXI.Text({
+      text: '游戏暂停',
+      style: {
+        fontFamily: 'Arial, sans-serif',
+        fontSize: 48,
+        fontWeight: 'bold',
+        fill: 0xFFFFFF,
+        stroke: { color: 0x000000, width: 5 }
+      }
+    });
+    pauseText.anchor.set(0.5);
+    pauseText.position.set(this.config.rendering.canvasWidth / 2, 200);
+    menu.addChild(pauseText);
+
+    // 继续按钮
+    const resumeButton = this.createButton(
+      '继续游戏',
+      this.config.rendering.canvasWidth / 2 - 75,
+      300,
+      150,
+      50
+    );
+    resumeButton.on('pointerdown', () => {
+      this.hidePauseMenu();
+      this.eventBus.emit('game:resume');
+    });
+    menu.addChild(resumeButton);
+
+    // 重新开始按钮
+    const restartButton = this.createButton(
+      '重新开始',
+      this.config.rendering.canvasWidth / 2 - 75,
+      370,
+      150,
+      50
+    );
+    restartButton.on('pointerdown', () => {
+      this.hidePauseMenu();
+      this.eventBus.emit('game:restart');
+    });
+    menu.addChild(restartButton);
+
+    this.pauseMenu = menu;
+    this.layers.ui.addChild(menu);
+  }
+
+  /**
+   * 显示暂停菜单
+   */
+  showPauseMenu() {
+    if (!this.pauseMenu) {
+      this.createPauseMenu();
+    }
+  }
+
+  /**
+   * 隐藏暂停菜单
+   */
+  hidePauseMenu() {
+    if (this.pauseMenu) {
+      this.layers.ui.removeChild(this.pauseMenu);
+      this.pauseMenu.destroy({ children: true });
+      this.pauseMenu = null;
+    }
+  }
+
+  /**
+   * 创建游戏结束界面
+   * @param {Object} data - 游戏结束数据
+   */
+  createGameOverUI(data) {
+    const menu = new PIXI.Container();
+    menu.label = 'gameOverMenu';
+
+    // 半透明背景
+    const overlay = new PIXI.Graphics();
+    overlay.rect(0, 0, this.config.rendering.canvasWidth, this.config.rendering.canvasHeight);
+    overlay.fill({ color: 0x000000, alpha: 0.8 });
+    menu.addChild(overlay);
+
+    // 游戏结束文字
+    const gameOverText = new PIXI.Text({
+      text: '游戏结束',
+      style: {
+        fontFamily: 'Arial, sans-serif',
+        fontSize: 48,
+        fontWeight: 'bold',
+        fill: 0xFF6B6B,
+        stroke: { color: 0x000000, width: 5 }
+      }
+    });
+    gameOverText.anchor.set(0.5);
+    gameOverText.position.set(this.config.rendering.canvasWidth / 2, 150);
+    menu.addChild(gameOverText);
+
+    // 最终分数
+    const scoreText = new PIXI.Text({
+      text: `最终分数: ${data.finalScore}`,
+      style: {
+        fontFamily: 'Arial, sans-serif',
+        fontSize: 32,
+        fill: 0xFFFFFF,
+        stroke: { color: 0x000000, width: 3 }
+      }
+    });
+    scoreText.anchor.set(0.5);
+    scoreText.position.set(this.config.rendering.canvasWidth / 2, 250);
+    menu.addChild(scoreText);
+
+    // 移动次数
+    const movesText = new PIXI.Text({
+      text: `移动次数: ${data.moves}`,
+      style: {
+        fontFamily: 'Arial, sans-serif',
+        fontSize: 24,
+        fill: 0xFFFFFF,
+        stroke: { color: 0x000000, width: 2 }
+      }
+    });
+    movesText.anchor.set(0.5);
+    movesText.position.set(this.config.rendering.canvasWidth / 2, 300);
+    menu.addChild(movesText);
+
+    // 重新开始按钮
+    const restartButton = this.createButton(
+      '重新开始',
+      this.config.rendering.canvasWidth / 2 - 75,
+      370,
+      150,
+      50
+    );
+    restartButton.on('pointerdown', () => {
+      this.hideGameOverUI();
+      this.eventBus.emit('game:restart');
+    });
+    menu.addChild(restartButton);
+
+    this.gameOverMenu = menu;
+    this.layers.ui.addChild(menu);
+  }
+
+  /**
+   * 隐藏游戏结束界面
+   */
+  hideGameOverUI() {
+    if (this.gameOverMenu) {
+      this.layers.ui.removeChild(this.gameOverMenu);
+      this.gameOverMenu.destroy({ children: true });
+      this.gameOverMenu = null;
+    }
+  }
+
+  /**
    * 清理资源
    */
   destroy() {

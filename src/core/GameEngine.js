@@ -31,6 +31,10 @@ export class GameEngine {
     this.moves = 0;
     this.comboCount = 0;
     
+    // 计时器
+    this.remainingTime = this.config.timer.defaultTime;
+    this.isTimerRunning = false;
+    
     // 处理状态
     this.isProcessing = false;
     
@@ -55,6 +59,8 @@ export class GameEngine {
     this.moves = 0;
     this.comboCount = 0;
     this.isProcessing = false;
+    this.remainingTime = this.config.timer.defaultTime;
+    this.isTimerRunning = false;
     
     // 订阅事件
     this.setupEventListeners();
@@ -71,6 +77,11 @@ export class GameEngine {
     
     // 订阅游戏重置事件
     this.eventBus.on(GameEvents.GAME_RESET, () => this.reset());
+    
+    // 订阅暂停/恢复事件
+    this.eventBus.on('game:pause', () => this.pause());
+    this.eventBus.on('game:resume', () => this.resume());
+    this.eventBus.on('game:restart', () => this.restart());
   }
 
   /**
@@ -132,6 +143,9 @@ export class GameEngine {
         // 有匹配：处理匹配消除流程
         console.log(`✅ 发现匹配: ${matches.length} 个`);
         this.moves++;
+        
+        // 发布移动次数更新事件
+        this.eventBus.emit('moves:update', { moves: this.moves });
         
         // 重置连锁计数
         this.comboCount = 1;
@@ -445,8 +459,19 @@ export class GameEngine {
    */
   start() {
     this.stateManager.setState(GameState.PLAYING);
+    this.startTimer();
     this.eventBus.emit(GameEvents.GAME_START);
     console.log('🚀 游戏开始！');
+  }
+
+  /**
+   * 启动计时器
+   */
+  startTimer() {
+    this.isTimerRunning = true;
+    this.remainingTime = this.config.timer.defaultTime;
+    this.eventBus.emit('timer:update', { time: this.remainingTime });
+    console.log('⏱️  计时器启动');
   }
 
   /**
@@ -455,6 +480,7 @@ export class GameEngine {
   pause() {
     if (this.stateManager.isState(GameState.PLAYING)) {
       this.stateManager.setState(GameState.PAUSED);
+      this.pauseTimer();
       this.eventBus.emit(GameEvents.INPUT_DISABLED);
       console.log('⏸️  游戏暂停');
     }
@@ -466,9 +492,40 @@ export class GameEngine {
   resume() {
     if (this.stateManager.isState(GameState.PAUSED)) {
       this.stateManager.setState(GameState.PLAYING);
+      this.resumeTimer();
       this.eventBus.emit(GameEvents.INPUT_ENABLED);
       console.log('▶️  游戏继续');
     }
+  }
+
+  /**
+   * 暂停计时器
+   */
+  pauseTimer() {
+    this.isTimerRunning = false;
+    console.log('⏸️  计时器暂停');
+  }
+
+  /**
+   * 恢复计时器
+   */
+  resumeTimer() {
+    this.isTimerRunning = true;
+    console.log('▶️  计时器恢复');
+  }
+
+  /**
+   * 重新开始游戏
+   */
+  restart() {
+    console.log('🔄 重新开始游戏...');
+    this.reset();
+    
+    // 通知渲染引擎重新渲染游戏板
+    this.eventBus.emit('game:board:reset');
+    
+    // 启动游戏
+    this.start();
   }
 
   /**
@@ -480,6 +537,8 @@ export class GameEngine {
     this.moves = 0;
     this.comboCount = 0;
     this.isProcessing = false;
+    this.remainingTime = this.config.timer.defaultTime;
+    this.isTimerRunning = false;
     
     // 重新创建游戏板
     this.boardManager.createBoard();
@@ -499,9 +558,33 @@ export class GameEngine {
    * @param {number} deltaTime - 帧间隔时间（秒）
    */
   update(deltaTime) {
-    // 这里可以添加每帧需要更新的逻辑
-    // 例如：计时器更新、动画更新等
-    // 目前暂时为空，后续阶段会添加
+    // 更新计时器
+    if (this.isTimerRunning && this.stateManager.isState(GameState.PLAYING)) {
+      this.remainingTime -= deltaTime;
+      
+      // 发布计时器更新事件
+      this.eventBus.emit('timer:update', { time: Math.max(0, this.remainingTime) });
+      
+      // 检查时间是否用完
+      if (this.remainingTime <= 0) {
+        this.remainingTime = 0;
+        this.isTimerRunning = false;
+        
+        // 触发游戏结束
+        this.stateManager.setState(GameState.GAME_OVER, {
+          reason: 'time_up',
+          finalScore: this.score
+        });
+        
+        this.eventBus.emit(GameEvents.GAME_OVER, {
+          reason: 'time_up',
+          finalScore: this.score,
+          moves: this.moves
+        });
+        
+        console.log('⏰ 时间到！游戏结束');
+      }
+    }
   }
 
   /**

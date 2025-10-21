@@ -176,7 +176,7 @@
 
 ## 第五阶段：UI和游戏循环
 
-- [ ] 17. 实现游戏主循环（基于 PixiJS Ticker）
+- [x] 17. 实现游戏主循环（基于 PixiJS Ticker）
   - 在 src/main.js 中实现游戏入口（从 npm 导入 PixiJS：`import * as PIXI from 'pixi.js'`）
   - 创建 Game 类封装游戏初始化和生命周期管理
   - 实现 async init() 方法初始化所有模块（EventBus、GameEngine、RenderEngine、InputManager）
@@ -190,7 +190,7 @@
   - 验证：游戏循环稳定运行，FPS 达到 60，控制台无错误
   - _需求: 8.1, 8.3_
 
-- [ ] 18. 实现 UI 渲染（使用 PixiJS Text 和 Graphics）
+- [x] 18. 实现 UI 渲染（使用 PixiJS Text 和 Graphics）
   - 在 RenderEngine 中实现 createUI() 方法
   - 使用 PIXI.Text 创建分数文本显示（字体、颜色、位置、对齐方式）
   - 使用 PIXI.Text 创建计时器文本显示（位置在右上角）
@@ -206,7 +206,7 @@
   - 验证：UI 元素正确显示，按钮可点击，分数和计时器实时更新
   - _需求: 5.5, 6.5, 9.1, 9.2, 10.2_
 
-- [ ] 19. 实现菜单和暂停功能
+- [x] 19. 实现菜单和暂停功能
   - 实现开始菜单界面渲染
   - 实现暂停菜单界面渲染
   - 在InputManager中添加键盘事件监听（ESC键暂停）

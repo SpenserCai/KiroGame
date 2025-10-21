@@ -105,11 +105,15 @@ class Game {
       this.renderEngine = new RenderEngine(container, this.config, this.eventBus);
       await this.renderEngine.init();
 
-      // 9. 渲染游戏板
+      // 9. 创建 UI 元素
+      console.log('🎨 创建 UI 元素...');
+      this.renderEngine.createUI();
+
+      // 10. 渲染游戏板
       console.log('🎨 渲染游戏板...');
       this.renderEngine.renderBoard(this.boardManager, this.textureFactory);
 
-      // 10. 初始化输入管理器
+      // 11. 初始化输入管理器
       console.log('\n🎮 初始化输入管理器...');
       this.inputManager = new InputManager(
         this.renderEngine.app,
@@ -123,24 +127,55 @@ class Game {
         this.inputManager.addSpriteInteraction(sprite);
       });
 
-      // 11. 设置游戏循环（更新动画）
+      // 12. 设置游戏循环（更新动画和游戏逻辑）
       this.renderEngine.app.ticker.add((ticker) => {
         const deltaTime = ticker.deltaMS;
         this.animationController.update(deltaTime);
         this.gameEngine.update(deltaTime / 1000); // 转换为秒
+        
+        // 更新 FPS 显示（如果启用）
+        if (this.config.debug.showFPS) {
+          this.renderEngine.updateFPS(ticker.FPS);
+        }
       });
 
-      // 12. 订阅游戏事件
+      // 13. 添加键盘事件监听
+      this.setupKeyboardListeners();
+
+      // 14. 订阅游戏事件
       this.setupEventListeners();
+
+      // 15. 显示开始菜单
+      this.renderEngine.createStartMenu();
 
       this.isInitialized = true;
       console.log('\n✨ 游戏初始化完成！\n');
-      console.log('💡 提示: 点击相邻的图标进行交换');
+      console.log('💡 提示: 点击"开始游戏"按钮开始游戏');
+      console.log('💡 游戏中按 ESC 键暂停/恢复游戏');
 
     } catch (error) {
       console.error('❌ 游戏初始化失败:', error);
       throw error;
     }
+  }
+
+  /**
+   * 设置键盘事件监听
+   */
+  setupKeyboardListeners() {
+    window.addEventListener('keydown', (event) => {
+      // ESC 键暂停/恢复游戏
+      if (event.key === 'Escape') {
+        const currentState = this.stateManager.getCurrentState();
+        if (currentState === 'playing') {
+          this.eventBus.emit('game:pause');
+          this.renderEngine.showPauseMenu();
+        } else if (currentState === 'paused') {
+          this.eventBus.emit('game:resume');
+          this.renderEngine.hidePauseMenu();
+        }
+      }
+    });
   }
 
   /**
@@ -327,9 +362,55 @@ class Game {
     // 游戏结束事件
     this.eventBus.on('game:over', ({ reason, finalScore, moves }) => {
       console.log(`\n🎮 游戏结束！`);
-      console.log(`   原因: ${reason === 'no_moves' ? '无可用移动' : reason}`);
+      console.log(`   原因: ${reason === 'no_moves' ? '无可用移动' : reason === 'time_up' ? '时间到' : reason}`);
       console.log(`   最终分数: ${finalScore}`);
       console.log(`   移动次数: ${moves}\n`);
+      
+      // 显示游戏结束界面
+      this.renderEngine.createGameOverUI({ finalScore, moves, reason });
+    });
+
+    // 游戏开始事件
+    this.eventBus.on('game:start', () => {
+      // 隐藏开始菜单
+      this.renderEngine.hideStartMenu();
+      
+      // 更新 UI
+      this.renderEngine.updateScore(0);
+      this.renderEngine.updateTimer(this.config.timer.defaultTime);
+      this.renderEngine.updateMoves(0);
+      
+      // 启动游戏引擎（切换到 PLAYING 状态并启动计时器）
+      this.gameEngine.start();
+    });
+
+    // 计时器更新事件
+    this.eventBus.on('timer:update', ({ time }) => {
+      this.renderEngine.updateTimer(time);
+    });
+
+    // 移动次数更新事件
+    this.eventBus.on('moves:update', ({ moves }) => {
+      this.renderEngine.updateMoves(moves);
+    });
+
+    // 游戏板重置事件
+    this.eventBus.on('game:board:reset', () => {
+      // 重新渲染游戏板
+      this.renderEngine.renderBoard(this.boardManager, this.textureFactory);
+      
+      // 为所有精灵添加交互事件
+      this.renderEngine.tileSprites.forEach(sprite => {
+        this.inputManager.addSpriteInteraction(sprite);
+      });
+      
+      // 隐藏游戏结束界面
+      this.renderEngine.hideGameOverUI();
+      
+      // 更新 UI
+      this.renderEngine.updateScore(0);
+      this.renderEngine.updateTimer(this.config.timer.defaultTime);
+      this.renderEngine.updateMoves(0);
     });
 
     // 状态变化事件
@@ -347,8 +428,8 @@ class Game {
       return;
     }
 
-    // 通过游戏引擎启动游戏
-    this.gameEngine.start();
+    // 不自动启动游戏，等待用户点击开始按钮
+    console.log('💡 点击"开始游戏"按钮开始游戏');
   }
 
   /**
