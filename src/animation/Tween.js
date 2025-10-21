@@ -17,6 +17,17 @@ export class Tween {
    * @param {string|Function} easing - 缓动函数名称或自定义函数
    */
   constructor(target, props, duration, easing = 'linear') {
+    this.init(target, props, duration, easing);
+  }
+
+  /**
+   * 初始化或重新初始化补间动画（用于对象池复用）
+   * @param {Object} target - 目标对象
+   * @param {Object} props - 要补间的属性
+   * @param {number} duration - 动画时长（毫秒）
+   * @param {string|Function} easing - 缓动函数名称或自定义函数
+   */
+  init(target, props, duration, easing = 'linear') {
     this.target = target;
     this.startProps = {};
     this.endProps = {};
@@ -36,14 +47,16 @@ export class Tween {
     }
     
     // 记录起始值并解析嵌套属性
-    for (let key in props) {
-      const accessor = this._parsePropertyPath(target, key);
-      if (accessor) {
-        this.propAccessors[key] = accessor;
-        this.startProps[key] = accessor.get();
-        this.endProps[key] = props[key];
-      } else {
-        console.warn(`Tween: 目标对象没有属性 "${key}"`);
+    if (target && props) {
+      for (let key in props) {
+        const accessor = this._parsePropertyPath(target, key);
+        if (accessor) {
+          this.propAccessors[key] = accessor;
+          this.startProps[key] = accessor.get();
+          this.endProps[key] = props[key];
+        } else {
+          console.warn(`Tween: 目标对象没有属性 "${key}"`);
+        }
       }
     }
     
