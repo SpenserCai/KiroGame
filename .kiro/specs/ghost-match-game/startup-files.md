@@ -17,9 +17,7 @@
     "preview": "vite preview",
     "test": "node --test tests/unit/**/*.test.js",
     "test:watch": "node --test --watch tests/unit/**/*.test.js",
-    "build:assets": "npm run build:ghosts && npm run build:special",
-    "build:ghosts": "svg2png assets/svg/ghosts/*.svg -o assets/images/ghosts -w 128 -h 128",
-    "build:special": "svg2png assets/svg/special/*.svg -o assets/images/special -w 128 -h 128"
+    "build:assets": "node scripts/convert-svg.js"
   },
   "keywords": [
     "game",
@@ -35,11 +33,11 @@
     "node": ">=18.0.0"
   },
   "dependencies": {
-    "pixi.js": "^8.0.0"
+    "pixi.js": "^8.14.0"
   },
   "devDependencies": {
     "vite": "^5.0.0",
-    "svg2png": "^4.1.1"
+    "sharp": "^0.33.0"
   }
 }
 ```
@@ -181,7 +179,7 @@ export default defineConfig({
  * 负责初始化游戏并启动游戏循环（基于 PixiJS）
  */
 
-// 从 npm 包导入 PixiJS（Vite 会自动处理）
+// 从 npm 包导入 PixiJS v8.14.0（Vite 会自动处理）
 import * as PIXI from 'pixi.js';
 import { GameConfig, GameState } from './config.js';
 import { EventBus } from './core/EventBus.js';
@@ -234,7 +232,7 @@ class Game {
       container.classList.remove('hidden');
       
       console.log('✅ Game initialized successfully');
-      console.log('🎮 PixiJS version:', PIXI.VERSION);
+      console.log('🎮 PixiJS version:', PIXI.VERSION); // 应该显示 8.14.0
       
       // 启动游戏循环（使用PixiJS的ticker）
       this.start();
@@ -378,22 +376,19 @@ assets/images/special/*.png
    # 安装依赖
    npm install
    
-   # 转换所有SVG为PNG
+   # 转换所有SVG为PNG（使用 sharp 库）
    npm run build:assets
-   
-   # 或分别转换
-   npm run build:ghosts   # 转换普通图标
-   npm run build:special  # 转换特殊图标
    ```
+   
+   这会执行 `scripts/convert-svg.js` 脚本，自动将所有 SVG 转换为 128x128 的 PNG。
 
-3. **手动转换（可选）**
-   ```bash
-   # 转换单个文件
-   ./node_modules/.bin/svg2png-cli assets/svg/ghosts/ghost-red.svg -o assets/images/ghosts -w 128 -h 128
+3. **转换脚本说明**
    
-   # 转换并指定不同尺寸
-   ./node_modules/.bin/svg2png-cli assets/svg/ghosts/*.svg -o assets/images/ghosts@2x -w 256 -h 256
-   ```
+   `scripts/convert-svg.js` 使用 sharp 库进行转换：
+   - 自动扫描 `assets/svg/` 目录下的所有 SVG 文件
+   - 转换为 128x128 的 PNG 格式
+   - 保持透明度和高质量
+   - 输出到 `assets/images/` 对应目录
 
 4. **验证生成的PNG**
    - 检查`assets/images/`目录
@@ -438,6 +433,140 @@ assets/svg/special/
   └── col-clear.svg      # 纵向消除
 ```
 
+## scripts/convert-svg.js
+
+```javascript
+/**
+ * SVG 转 PNG 转换脚本
+ * 使用 sharp 库将 assets/svg/ 目录下的所有 SVG 转换为 PNG
+ */
+import sharp from 'sharp';
+import { readdir, mkdir } from 'fs/promises';
+import { join, dirname, basename, extname } from 'path';
+import { fileURLToPath } from 'url';
+import { existsSync } from 'fs';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+const projectRoot = join(__dirname, '..');
+
+// 配置
+const config = {
+  inputDir: join(projectRoot, 'assets/svg'),
+  outputDir: join(projectRoot, 'assets/images'),
+  size: 128, // 输出尺寸 128x128
+  quality: 100, // PNG 质量
+};
+
+/**
+ * 确保目录存在
+ */
+async function ensureDir(dir) {
+  if (!existsSync(dir)) {
+    await mkdir(dir, { recursive: true });
+    console.log(`✅ 创建目录: ${dir}`);
+  }
+}
+
+/**
+ * 转换单个 SVG 文件为 PNG
+ */
+async function convertSvgToPng(inputPath, outputPath) {
+  try {
+    await sharp(inputPath)
+      .resize(config.size, config.size, {
+        fit: 'contain',
+        background: { r: 0, g: 0, b: 0, alpha: 0 }, // 透明背景
+      })
+      .png({ quality: config.quality })
+      .toFile(outputPath);
+    
+    console.log(`✅ 转换成功: ${basename(inputPath)} -> ${basename(outputPath)}`);
+    return true;
+  } catch (error) {
+    console.error(`❌ 转换失败: ${basename(inputPath)}`, error.message);
+    return false;
+  }
+}
+
+/**
+ * 递归扫描目录并转换所有 SVG 文件
+ */
+async function convertDirectory(inputDir, outputDir) {
+  try {
+    const entries = await readdir(inputDir, { withFileTypes: true });
+    let successCount = 0;
+    let failCount = 0;
+
+    for (const entry of entries) {
+      const inputPath = join(inputDir, entry.name);
+      
+      if (entry.isDirectory()) {
+        // 递归处理子目录
+        const subOutputDir = join(outputDir, entry.name);
+        await ensureDir(subOutputDir);
+        const result = await convertDirectory(inputPath, subOutputDir);
+        successCount += result.success;
+        failCount += result.fail;
+      } else if (entry.isFile() && extname(entry.name).toLowerCase() === '.svg') {
+        // 转换 SVG 文件
+        const outputFileName = basename(entry.name, '.svg') + '.png';
+        const outputPath = join(outputDir, outputFileName);
+        
+        const success = await convertSvgToPng(inputPath, outputPath);
+        if (success) {
+          successCount++;
+        } else {
+          failCount++;
+        }
+      }
+    }
+
+    return { success: successCount, fail: failCount };
+  } catch (error) {
+    console.error(`❌ 读取目录失败: ${inputDir}`, error.message);
+    return { success: 0, fail: 0 };
+  }
+}
+
+/**
+ * 主函数
+ */
+async function main() {
+  console.log('🎨 开始转换 SVG 为 PNG...\n');
+  console.log(`输入目录: ${config.inputDir}`);
+  console.log(`输出目录: ${config.outputDir}`);
+  console.log(`输出尺寸: ${config.size}x${config.size}\n`);
+
+  // 确保输出目录存在
+  await ensureDir(config.outputDir);
+
+  // 开始转换
+  const startTime = Date.now();
+  const result = await convertDirectory(config.inputDir, config.outputDir);
+  const duration = ((Date.now() - startTime) / 1000).toFixed(2);
+
+  // 输出结果
+  console.log('\n' + '='.repeat(50));
+  console.log(`✅ 转换完成！`);
+  console.log(`成功: ${result.success} 个文件`);
+  console.log(`失败: ${result.fail} 个文件`);
+  console.log(`耗时: ${duration} 秒`);
+  console.log('='.repeat(50));
+
+  // 如果有失败的文件，退出码为 1
+  if (result.fail > 0) {
+    process.exit(1);
+  }
+}
+
+// 运行主函数
+main().catch((error) => {
+  console.error('❌ 转换过程出错:', error);
+  process.exit(1);
+});
+```
+
 ## README.md
 
 ```markdown
@@ -457,13 +586,14 @@ assets/svg/special/
 
 ## 技术栈
 
-- **渲染引擎**: PixiJS v8.0（WebGL + Canvas 降级）
+- **渲染引擎**: PixiJS v8.14.0（WebGL + Canvas 降级）
 - **开发工具**: Vite v5.0（开发服务器和构建工具）
 - **包管理**: npm
 - **运行环境**: 现代浏览器（Chrome 90+, Firefox 88+, Safari 14+, Edge 90+）
 - **开发环境**: Node.js 18+（仅用于开发服务器）
 - **模块系统**: ES6+ Modules
 - **编程语言**: 原生 JavaScript（无需 TypeScript）
+- **图像处理**: sharp v0.33.0（SVG 转 PNG）
 
 ## 快速开始
 
@@ -483,9 +613,9 @@ npm install
 \`\`\`
 
 这将安装：
-- PixiJS v8.0（渲染引擎）
+- PixiJS v8.14.0（渲染引擎）
 - Vite v5.0（开发服务器）
-- svg2png（资源转换工具）
+- sharp v0.33.0（图像处理工具，用于 SVG 转 PNG）
 
 ### 开发模式
 

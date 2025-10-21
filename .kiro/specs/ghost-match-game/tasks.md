@@ -3,7 +3,7 @@
 ## 第一阶段：基础架构和核心数据结构
 
 - [ ] 1. 创建项目结构和配置文件
-  - 创建 package.json 定义项目元数据、启动脚本（dev、build、preview、test、build:assets）和依赖（pixi.js: ^8.0.0）、开发依赖（vite: ^5.0.0, svg2png: ^4.1.1）
+  - 创建 package.json 定义项目元数据、启动脚本（dev、build、preview、test、build:assets）和依赖（pixi.js: ^8.14.0）、开发依赖（vite: ^5.0.0, sharp: ^0.33.0）
   - 创建 vite.config.js 配置 Vite 开发服务器（端口 5173、自动打开浏览器、PixiJS 预构建优化）
   - 创建资源目录结构（assets/svg/ghosts/、assets/svg/special/、assets/images/ghosts/、assets/images/special/）
   - 运行 `npm install` 安装 PixiJS、Vite 和 svg2png 依赖
@@ -45,6 +45,8 @@
 ## 第二阶段：美术资源准备和PixiJS渲染引擎
 
 - [ ] 5. 设计和生成图标资源
+  - 创建 scripts/convert-svg.js 脚本，使用 sharp 库实现 SVG 转 PNG 功能
+  - 脚本功能：自动扫描 assets/svg/ 目录，转换所有 SVG 为 128x128 PNG，保持透明度
   - 使用 Figma、Illustrator 或其他矢量工具设计 5 种普通小鬼图标 SVG（128x128px，透明背景）
   - 设计 4 种特殊图标 SVG：炸弹、彩色炸弹、横向消除、纵向消除（带特效光晕）
   - 确保所有 SVG 使用透明背景、居中对齐、适当内边距（8-16px）
@@ -52,6 +54,7 @@
   - 运行 `npm run build:assets` 将 SVG 转换为 PNG（128x128）
   - 验证生成的 PNG 文件质量、透明度和边缘抗锯齿
   - 在 assets/images/ 目录创建 .gitkeep 文件保留目录结构
+  - 添加转换失败的错误处理和提示
   - _需求: 1.4, 1.6, 6.1, 9.4_
 
 - [ ] 6. 实现 PixiJS 渲染引擎基础
@@ -71,13 +74,14 @@
   - 实现 init() 方法使用 PIXI.Assets.load() 批量加载所有 PNG 资源（使用 Vite 的绝对路径 /assets/images/...）
   - 定义资源清单（普通图标 5 个 + 特殊图标 4 个）
   - 实现纹理缓存机制（Map 存储，避免重复加载）
-  - 实现 getTexture(key) 方法获取缓存的纹理，添加错误处理
+  - 实现 getTexture(key) 方法获取缓存的纹理，添加错误处理和重试机制
   - 实现 hasTexture(key) 方法检查纹理是否存在
   - 在 RenderEngine 中实现 createTileSprite(tile) 创建图标精灵（设置 anchor、size、position、eventMode）
   - 实现 updateTileSprite(sprite, tile) 更新精灵位置和状态
   - 实现 renderBoard(board) 遍历游戏板并创建所有图标精灵，添加到 boardLayer
   - 实现选中状态的高亮效果（使用 PIXI.Graphics 绘制边框，添加到 effectLayer）
-  - 添加加载进度显示（可选，使用 PIXI.Assets 的进度回调）
+  - 添加加载进度显示（使用 PIXI.Assets 的进度回调）
+  - 添加资源加载失败的错误处理和降级方案
   - 验证：游戏板上能看到 5 种不同的小鬼图标精灵，点击能看到高亮边框
   - _需求: 1.6, 6.1, 9.4_
 
@@ -306,7 +310,7 @@
   - _需求: 8.1, 8.2, 8.4_
 
 - [ ] 29. 编写单元测试
-  - 创建tests/目录和测试文件
+  - 创建tests/unit/目录和测试文件
   - 为BoardManager编写测试：
     * 创建8x8游戏板验证
     * 初始化后无匹配
@@ -323,11 +327,14 @@
     * 取消订阅
     * once一次性订阅
     * 多订阅者
-  - 为AnimationController编写测试：
-    * 动画队列管理
-    * 动画完成回调
-    * isAnimating状态
+  - 为SpecialTileManager编写测试：
+    * 4连生成炸弹
+    * 5连生成彩色炸弹
+    * L型/T型生成横向/纵向消除
+    * 特殊图标激活效果
+    * 特殊图标组合效果
   - 使用Node.js内置test runner运行：`npm test`
+  - 目标覆盖率：50%（重点测试核心逻辑）
   - 验证：所有测试通过
   - _需求: 7.1, 7.3_
 
@@ -358,13 +365,14 @@
 ## 第八阶段：测试和打磨
 
 - [ ] 31. 编写单元测试
-  - 创建tests/目录和测试文件
+  - 创建tests/unit/目录和测试文件
   - 为BoardManager编写测试：创建游戏板、初始化无匹配、交换图标、边界情况
   - 为MatchDetector编写测试：横向/纵向匹配、L型/T型匹配、hasValidMoves准确性
   - 为EventBus编写测试：订阅/发布、取消订阅、once一次性订阅
   - 为特殊图标系统编写测试：生成逻辑、激活效果、组合效果
   - 使用Node.js内置test runner运行：`npm test`
-  - 验证：所有测试通过，覆盖率达到70%+
+  - 目标覆盖率：50%（重点测试核心逻辑，渲染和动画主要靠手动测试）
+  - 验证：所有测试通过
   - _需求: 7.1, 7.3_
 
 - [ ] 32. 编写集成测试和端到端测试

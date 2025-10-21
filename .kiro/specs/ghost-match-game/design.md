@@ -17,7 +17,7 @@
    - 缺点：体积较大（~1.2MB压缩后）、学习曲线陡峭、对简单消除游戏过于复杂
    - 适用场景：复杂的动作游戏、平台游戏
 
-2. **PixiJS** (v8.0.0 - 2024年最新版) ⭐ **最终选择**
+2. **PixiJS** (v8.14.0 - 2024年最新稳定版) ⭐ **最终选择**
    - 优点：高性能2D渲染、WebGL自动加速、轻量级（~400KB压缩后）、精灵系统完善
    - 缺点：主要是渲染库而非完整游戏引擎、需要自己实现游戏逻辑
    - 适用场景：需要大量精灵和粒子效果的游戏、消除类游戏
@@ -32,7 +32,7 @@
    - 缺点：需要自己实现动画、精灵管理等基础功能，开发工作量大
    - 适用场景：极简单的2D游戏、对体积有严格要求的项目
 
-**最终选择：PixiJS v8.0 + 自定义游戏逻辑**
+**最终选择：PixiJS v8.14.0 + 自定义游戏逻辑**
 
 理由：
 - **降低30-40%开发工作量**：内置精灵系统、补间动画、事件处理
@@ -42,6 +42,7 @@
 - **保持模块化设计**：PixiJS只负责渲染，游戏逻辑仍然自主实现
 - **活跃的社区**：文档完善，问题容易解决
 - **体积可接受**：压缩后约400KB，对于游戏项目合理
+- **最新稳定版本**：v8.14.0 包含最新的性能优化和bug修复
 
 #### 技术栈详细说明
 
@@ -51,10 +52,10 @@
   - **游戏逻辑**: 完全运行在浏览器端，无需服务器端计算
   
 - **核心技术**:
-  - **PixiJS v8.0** - 2D 渲染引擎（WebGL + Canvas 降级）
+  - **PixiJS v8.14.0** - 2D 渲染引擎（WebGL + Canvas 降级）
   - **npm** - 包管理工具，管理 PixiJS 等依赖
   - **ES6+ Modules** - 模块化代码组织
-  - **Vite** - 现代化开发服务器和构建工具
+  - **Vite v5.0+** - 现代化开发服务器和构建工具
   - **Web APIs** - Event Listeners, Performance API, requestAnimationFrame
 
 - **PixiJS 核心功能使用**:
@@ -86,11 +87,11 @@
   // package.json
   {
     "dependencies": {
-      "pixi.js": "^8.0.0"  // PixiJS 渲染引擎
+      "pixi.js": "^8.14.0"  // PixiJS 渲染引擎（最新稳定版）
     },
     "devDependencies": {
-      "vite": "^5.0.0",    // 开发服务器和构建工具
-      "svg2png": "^4.1.1"  // SVG 转 PNG 工具
+      "vite": "^5.0.0",     // 开发服务器和构建工具
+      "sharp": "^0.33.0"    // 图像处理工具（用于 SVG 转 PNG）
     }
   }
   ```
@@ -218,37 +219,37 @@ class EventBus {
 
 **关键事件**:
 
-| 事件名称 | 触发时机 | 数据载荷 | 订阅者 |
-|---------|---------|---------|--------|
-| `game:init` | 游戏初始化完成 | `{ board, config }` | RenderEngine |
-| `game:start` | 游戏开始 | `{}` | StateManager, RenderEngine |
-| `game:reset` | 游戏重置 | `{}` | GameEngine, RenderEngine |
-| `tile:select` | 图标被选中 | `{ tile, position }` | RenderEngine, GameEngine |
-| `tile:deselect` | 图标取消选中 | `{ tile }` | RenderEngine |
-| `tile:swap:start` | 开始交换图标 | `{ tile1, tile2 }` | AnimationController |
-| `tile:swap:complete` | 交换完成 | `{ tile1, tile2, hasMatch }` | GameEngine |
-| `tile:swap:revert` | 交换回退 | `{ tile1, tile2 }` | AnimationController |
-| `match:found` | 发现匹配 | `{ matches: [Match], totalTiles }` | GameEngine, RenderEngine |
-| `match:none` | 无匹配 | `{}` | GameEngine |
-| `tile:remove:start` | 开始消除图标 | `{ tiles: [Tile] }` | AnimationController |
-| `tile:remove:complete` | 消除完成 | `{ tiles: [Tile] }` | GameEngine, BoardManager |
-| `tile:fall:start` | 开始下落 | `{ movements: [{tile, from, to}] }` | AnimationController |
-| `tile:fall:complete` | 下落完成 | `{}` | GameEngine |
-| `tile:spawn:start` | 开始生成新图标 | `{ tiles: [Tile] }` | AnimationController |
-| `tile:spawn:complete` | 生成完成 | `{}` | GameEngine |
-| `score:update` | 分数更新 | `{ score, delta, combo }` | RenderEngine |
-| `combo:trigger` | 触发连锁 | `{ comboCount, multiplier }` | RenderEngine, GameEngine |
-| `state:change` | 状态变化 | `{ from, to }` | 所有模块 |
-| `animation:start` | 动画开始 | `{ type, duration }` | StateManager |
-| `animation:complete` | 动画完成 | `{ type }` | GameEngine, StateManager |
-| `animation:queue:empty` | 动画队列清空 | `{}` | GameEngine |
-| `input:enabled` | 启用输入 | `{}` | InputManager |
-| `input:disabled` | 禁用输入 | `{}` | InputManager |
-| `board:stable` | 游戏板稳定（无动画、无匹配） | `{}` | GameEngine |
-| `board:shuffle` | 游戏板洗牌 | `{}` | BoardManager, RenderEngine |
-| `game:over` | 游戏结束 | `{ reason, finalScore }` | StateManager, RenderEngine |
-| `moves:none` | 无可用移动 | `{}` | GameEngine |
-| `error` | 错误发生 | `{ type, message, error }` | ErrorHandler |
+| 事件名称                | 触发时机                     | 数据载荷                            | 订阅者                     |
+| ----------------------- | ---------------------------- | ----------------------------------- | -------------------------- |
+| `game:init`             | 游戏初始化完成               | `{ board, config }`                 | RenderEngine               |
+| `game:start`            | 游戏开始                     | `{}`                                | StateManager, RenderEngine |
+| `game:reset`            | 游戏重置                     | `{}`                                | GameEngine, RenderEngine   |
+| `tile:select`           | 图标被选中                   | `{ tile, position }`                | RenderEngine, GameEngine   |
+| `tile:deselect`         | 图标取消选中                 | `{ tile }`                          | RenderEngine               |
+| `tile:swap:start`       | 开始交换图标                 | `{ tile1, tile2 }`                  | AnimationController        |
+| `tile:swap:complete`    | 交换完成                     | `{ tile1, tile2, hasMatch }`        | GameEngine                 |
+| `tile:swap:revert`      | 交换回退                     | `{ tile1, tile2 }`                  | AnimationController        |
+| `match:found`           | 发现匹配                     | `{ matches: [Match], totalTiles }`  | GameEngine, RenderEngine   |
+| `match:none`            | 无匹配                       | `{}`                                | GameEngine                 |
+| `tile:remove:start`     | 开始消除图标                 | `{ tiles: [Tile] }`                 | AnimationController        |
+| `tile:remove:complete`  | 消除完成                     | `{ tiles: [Tile] }`                 | GameEngine, BoardManager   |
+| `tile:fall:start`       | 开始下落                     | `{ movements: [{tile, from, to}] }` | AnimationController        |
+| `tile:fall:complete`    | 下落完成                     | `{}`                                | GameEngine                 |
+| `tile:spawn:start`      | 开始生成新图标               | `{ tiles: [Tile] }`                 | AnimationController        |
+| `tile:spawn:complete`   | 生成完成                     | `{}`                                | GameEngine                 |
+| `score:update`          | 分数更新                     | `{ score, delta, combo }`           | RenderEngine               |
+| `combo:trigger`         | 触发连锁                     | `{ comboCount, multiplier }`        | RenderEngine, GameEngine   |
+| `state:change`          | 状态变化                     | `{ from, to }`                      | 所有模块                   |
+| `animation:start`       | 动画开始                     | `{ type, duration }`                | StateManager               |
+| `animation:complete`    | 动画完成                     | `{ type }`                          | GameEngine, StateManager   |
+| `animation:queue:empty` | 动画队列清空                 | `{}`                                | GameEngine                 |
+| `input:enabled`         | 启用输入                     | `{}`                                | InputManager               |
+| `input:disabled`        | 禁用输入                     | `{}`                                | InputManager               |
+| `board:stable`          | 游戏板稳定（无动画、无匹配） | `{}`                                | GameEngine                 |
+| `board:shuffle`         | 游戏板洗牌                   | `{}`                                | BoardManager, RenderEngine |
+| `game:over`             | 游戏结束                     | `{ reason, finalScore }`            | StateManager, RenderEngine |
+| `moves:none`            | 无可用移动                   | `{}`                                | GameEngine                 |
+| `error`                 | 错误发生                     | `{ type, message, error }`          | ErrorHandler               |
 
 ### 2. Game Engine（游戏引擎）
 
@@ -880,11 +881,10 @@ assets/svg/
       ├── row-clear.svg
       └── col-clear.svg
 
-# 2. 转换为PNG（使用svg2png-cli）
+# 2. 转换为PNG（使用 sharp 库）
 npm run build:assets
-# 或手动执行：
-./node_modules/.bin/svg2png-cli assets/svg/ghosts/*.svg -o assets/images/ghosts -w 128 -h 128
-./node_modules/.bin/svg2png-cli assets/svg/special/*.svg -o assets/images/special -w 128 -h 128
+# 这会执行 scripts/convert-svg.js 脚本
+# 使用 sharp 库将所有 SVG 转换为 PNG (128x128)
 
 # 3. 生成的PNG资源
 assets/images/
@@ -1194,13 +1194,16 @@ class ErrorHandler {
 
 ### 单元测试
 
+**测试策略**:
+- **目标覆盖率**: 50%（重点测试核心逻辑）
+- **测试工具**: Node.js 内置 test runner (v18+)
+- **测试重点**: 游戏逻辑模块，渲染和动画主要靠手动测试
+
 **测试模块**:
 - `BoardManager`: 测试游戏板操作（创建、交换、移除）
 - `MatchDetector`: 测试匹配检测算法的准确性
 - `EventBus`: 测试事件订阅和发布机制
-- `AnimationController`: 测试动画队列管理
-
-**测试工具**: Node.js内置test runner (v18+)
+- `SpecialTileManager`: 测试特殊图标生成和激活逻辑
 
 **关键测试用例**:
 
@@ -1230,12 +1233,13 @@ class ErrorHandler {
    - 同一事件多个订阅者都能接收
    - 发布不存在的事件不报错
 
-4. **AnimationController测试**:
-   - 添加动画到队列
-   - update更新动画进度
-   - 动画完成后触发回调
-   - isAnimating正确反映动画状态
-   - clear清空所有动画
+4. **SpecialTileManager测试**:
+   - 4连匹配生成炸弹
+   - 5连匹配生成彩色炸弹
+   - L型/T型匹配生成横向/纵向消除
+   - 炸弹激活消除3x3范围
+   - 彩色炸弹激活消除所有相同类型
+   - 特殊图标组合效果正确
 
 5. **GameEngine集成测试**:
    - 完整的交换-匹配-消除-下落流程
@@ -1291,9 +1295,9 @@ test('初始化后无匹配', () => {
 
 **测试指标**:
 - 渲染帧率（目标：60fps）
-- 匹配检测耗时（目标：<10ms）
-- 内存使用（目标：<50MB）
-- 动画流畅度
+- 匹配检测耗时（目标：<5ms，8x8棋盘）
+- 内存使用（目标：<100MB，包含 PixiJS 和所有资源）
+- 动画流畅度（主观评估）
 
 **测试方法**:
 ```javascript

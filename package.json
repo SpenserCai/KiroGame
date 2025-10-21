@@ -1,6 +1,35 @@
 {
+  "name": "ghost-match-game",
+  "version": "1.0.0",
+  "description": "小鬼消消乐 - 基于 PixiJS 的浏览器消除类游戏",
+  "type": "module",
+  "main": "src/main.js",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "test": "node --test tests/unit/**/*.test.js",
+    "test:watch": "node --test --watch tests/unit/**/*.test.js",
+    "build:assets": "node scripts/convert-svg.js"
+  },
+  "keywords": [
+    "game",
+    "match-3",
+    "pixi.js",
+    "puzzle",
+    "javascript",
+    "browser-game"
+  ],
+  "author": "",
+  "license": "MIT",
+  "engines": {
+    "node": ">=18.0.0"
+  },
   "dependencies": {
-    "pixi.js": "^8.14.0",
-    "svg2png": "^4.1.1"
+    "pixi.js": "^8.14.0"
+  },
+  "devDependencies": {
+    "vite": "^5.0.0",
+    "sharp": "^0.33.0"
   }
 }
