@@ -212,7 +212,7 @@ export class AnimationController {
     sprite.scale.set(0);
     sprite.alpha = 0;
     
-    // 创建弹出动画
+    // ✅ 改用 easeOutCubic，避免 bounce 可能的数值问题
     const tween = new Tween(
       sprite,
       {
@@ -221,12 +221,22 @@ export class AnimationController {
         alpha: 1
       },
       duration,
-      'easeOutBounce'
+      'easeOutCubic'
     );
     
     this._addTween(tween);
     
-    return tween.promise;
+    // ✅ 确保动画完成后精确设置为 1.0
+    return tween.promise.then(() => {
+      sprite.scale.set(1.0);
+      sprite.alpha = 1.0;
+      return sprite;
+    }).catch((error) => {
+      // 即使动画被中断，也要恢复正常状态
+      sprite.scale.set(1.0);
+      sprite.alpha = 1.0;
+      throw error;
+    });
   }
 
   /**
@@ -270,7 +280,16 @@ export class AnimationController {
     // ✅ 先停止所有其他精灵的选中动画
     this.stopAllSelections();
     
-    // 确保从原始大小开始
+    // ✅ 停止该精灵上所有与 scale 相关的动画
+    for (let i = this.activeTweens.length - 1; i >= 0; i--) {
+      const tween = this.activeTweens[i];
+      if (tween.target === sprite || tween.target === sprite.scale) {
+        tween.stop();
+        this.activeTweens.splice(i, 1);
+      }
+    }
+    
+    // ✅ 强制设置为原始大小（确保没有残留的缩放）
     sprite.scale.set(1.0);
     
     // 标记该精灵正在播放选中动画
