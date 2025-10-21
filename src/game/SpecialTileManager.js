@@ -313,7 +313,14 @@ export class SpecialTileManager {
              tile2.specialType === SpecialTileType.COLOR_BOMB) {
       combo.type = 'color_bomb_combo';
       combo.description = '彩色炸弹组合：超级爆炸';
-      // 这种组合需要特殊处理，返回特殊标记
+      // 彩色炸弹组合：消除整个棋盘
+      for (let y = 0; y < this.boardManager.rows; y++) {
+        for (let x = 0; x < this.boardManager.cols; x++) {
+          if (this.boardManager.getTile(x, y)) {
+            combo.positions.push({ x, y });
+          }
+        }
+      }
     }
     // 横向 + 纵向消除 = 十字消除
     else if ((tile1.specialType === SpecialTileType.ROW_CLEAR && 
