@@ -2,7 +2,7 @@
 
 ## 第一阶段：基础架构和核心数据结构
 
-- [ ] 1. 创建项目结构和配置文件
+- [x] 1. 创建项目结构和配置文件
   - 创建 package.json 定义项目元数据、启动脚本（dev、build、preview、test、build:assets）和依赖（pixi.js: ^8.14.0）、开发依赖（vite: ^5.0.0, sharp: ^0.33.0）
   - 创建 vite.config.js 配置 Vite 开发服务器（端口 5173、自动打开浏览器、PixiJS 预构建优化）
   - 创建资源目录结构（assets/svg/ghosts/、assets/svg/special/、assets/images/ghosts/、assets/images/special/）
@@ -14,7 +14,7 @@
   - 验证：运行 `npm run dev` 能启动 Vite 服务器，浏览器自动打开 localhost:5173 能看到 PixiJS 初始化的画布
   - _需求: 1.1, 7.4, 7.6, 7.7, 10.1_
 
-- [ ] 2. 实现事件总线系统
+- [x] 2. 实现事件总线系统
   - 创建src/core/EventBus.js实现发布-订阅模式
   - 实现on()、off()、emit()、once()方法
   - 添加事件名称验证和错误处理
@@ -22,7 +22,7 @@
   - 验证：编写简单测试确保事件订阅和发布正常工作
   - _需求: 7.2_
 
-- [ ] 3. 实现图标和游戏板数据结构
+- [x] 3. 实现图标和游戏板数据结构
   - 创建src/game/Tile.js定义图标类（type、x、y、id、state属性）
   - 创建src/game/BoardManager.js实现游戏板管理器
   - 实现createBoard()方法生成8x8网格并随机填充5种图标类型
@@ -32,7 +32,7 @@
   - 验证：创建游戏板后检查无初始匹配，所有位置都有图标
   - _需求: 1.1, 1.2, 1.3_
 
-- [ ] 4. 实现匹配检测算法
+- [x] 4. 实现匹配检测算法
   - 创建src/game/MatchDetector.js实现匹配检测器
   - 定义Match类存储匹配信息（tiles、direction、length）
   - 实现findHorizontalMatches()横向扫描算法（检测连续3个或更多相同类型）
