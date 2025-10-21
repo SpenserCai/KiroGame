@@ -85,8 +85,9 @@ export class MatchDetector {
       for (let x = 0; x < board.cols; x++) {
         const tile = board.getTile(x, y);
 
-        if (!tile) {
-          // 遇到空位，检查当前匹配
+        // ✅ 跳过空位和特殊图标（特殊图标不参与匹配）
+        if (!tile || tile.isSpecial) {
+          // 遇到空位或特殊图标，检查当前匹配
           if (currentMatch.length >= 3) {
             matches.push(new Match(currentMatch, 'horizontal'));
           }
@@ -133,8 +134,9 @@ export class MatchDetector {
       for (let y = 0; y < board.rows; y++) {
         const tile = board.getTile(x, y);
 
-        if (!tile) {
-          // 遇到空位，检查当前匹配
+        // ✅ 跳过空位和特殊图标（特殊图标不参与匹配）
+        if (!tile || tile.isSpecial) {
+          // 遇到空位或特殊图标，检查当前匹配
           if (currentMatch.length >= 3) {
             matches.push(new Match(currentMatch, 'vertical'));
           }
@@ -175,7 +177,8 @@ export class MatchDetector {
    */
   checkMatchAtPosition(board, x, y) {
     const tile = board.getTile(x, y);
-    if (!tile) return false;
+    // ✅ 特殊图标不参与匹配
+    if (!tile || tile.isSpecial) return false;
 
     // 检查横向匹配
     let horizontalCount = 1;
@@ -183,7 +186,8 @@ export class MatchDetector {
     // 向左检查
     for (let i = x - 1; i >= 0; i--) {
       const leftTile = board.getTile(i, y);
-      if (leftTile && leftTile.type === tile.type) {
+      // ✅ 跳过特殊图标
+      if (leftTile && !leftTile.isSpecial && leftTile.type === tile.type) {
         horizontalCount++;
       } else {
         break;
@@ -193,7 +197,8 @@ export class MatchDetector {
     // 向右检查
     for (let i = x + 1; i < board.cols; i++) {
       const rightTile = board.getTile(i, y);
-      if (rightTile && rightTile.type === tile.type) {
+      // ✅ 跳过特殊图标
+      if (rightTile && !rightTile.isSpecial && rightTile.type === tile.type) {
         horizontalCount++;
       } else {
         break;
@@ -208,7 +213,8 @@ export class MatchDetector {
     // 向上检查
     for (let i = y - 1; i >= 0; i--) {
       const upTile = board.getTile(x, i);
-      if (upTile && upTile.type === tile.type) {
+      // ✅ 跳过特殊图标
+      if (upTile && !upTile.isSpecial && upTile.type === tile.type) {
         verticalCount++;
       } else {
         break;
@@ -218,7 +224,8 @@ export class MatchDetector {
     // 向下检查
     for (let i = y + 1; i < board.rows; i++) {
       const downTile = board.getTile(x, i);
-      if (downTile && downTile.type === tile.type) {
+      // ✅ 跳过特殊图标
+      if (downTile && !downTile.isSpecial && downTile.type === tile.type) {
         verticalCount++;
       } else {
         break;

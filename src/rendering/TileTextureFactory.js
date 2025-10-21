@@ -29,17 +29,17 @@ export class TileTextureFactory {
       { alias: 'type2', src: '/assets/images/ghosts/ghost-yellow.png' },
       { alias: 'type3', src: '/assets/images/ghosts/ghost-green.png' },
       { alias: 'type4', src: '/assets/images/ghosts/ghost-purple.png' },
-      
-      // 特殊图标
+
+      // 特殊图标 - 使用下划线命名以匹配 Tile.js 中的 SpecialTileType 常量
       { alias: 'bomb', src: '/assets/images/special/bomb.png' },
-      { alias: 'color-bomb', src: '/assets/images/special/color-bomb.png' },
-      { alias: 'row-clear', src: '/assets/images/special/row-clear.png' },
-      { alias: 'col-clear', src: '/assets/images/special/col-clear.png' }
+      { alias: 'color_bomb', src: '/assets/images/special/color-bomb.png' },
+      { alias: 'row_clear', src: '/assets/images/special/row-clear.png' },
+      { alias: 'col_clear', src: '/assets/images/special/col-clear.png' }
     ];
 
     try {
       // 批量加载资源
-      const promises = assets.map((asset, index) => 
+      const promises = assets.map((asset, index) =>
         PIXI.Assets.load(asset.src).then(texture => {
           this.loadProgress = ((index + 1) / assets.length) * 100;
           if (onProgress) {
@@ -63,7 +63,7 @@ export class TileTextureFactory {
 
     } catch (error) {
       console.error('❌ 纹理加载失败:', error);
-      
+
       // 尝试重新加载失败的资源
       await this.retryFailedAssets(assets);
     }
@@ -78,7 +78,7 @@ export class TileTextureFactory {
     for (let attempt = 1; attempt <= maxRetries; attempt++) {
       try {
         // 检查哪些资源加载失败
-        const failedAssets = assets.filter(asset => 
+        const failedAssets = assets.filter(asset =>
           !PIXI.Assets.cache.has(asset.src)
         );
 
@@ -109,7 +109,7 @@ export class TileTextureFactory {
 
   /**
    * 获取纹理
-   * @param {string} key - 纹理键名 (type0-4, bomb, color-bomb, row-clear, col-clear)
+   * @param {string} key - 纹理键名 (type0-4, bomb, color_bomb, row_clear, col_clear)
    */
   getTexture(key) {
     if (!this.isLoaded) {

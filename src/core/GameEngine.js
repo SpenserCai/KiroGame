@@ -17,14 +17,16 @@ export class GameEngine {
    * @param {MatchDetector} matchDetector - 匹配检测器
    * @param {StateManager} stateManager - 状态管理器
    * @param {AnimationController} animationController - 动画控制器（可选）
+   * @param {SpecialTileManager} specialTileManager - 特殊图标管理器（可选）
    */
-  constructor(config, eventBus, boardManager, matchDetector, stateManager, animationController = null) {
+  constructor(config, eventBus, boardManager, matchDetector, stateManager, animationController = null, specialTileManager = null) {
     this.config = config;
     this.eventBus = eventBus;
     this.boardManager = boardManager;
     this.matchDetector = matchDetector;
     this.stateManager = stateManager;
     this.animationController = animationController;
+    this.specialTileManager = specialTileManager;
     
     // 游戏数据
     this.score = 0;
@@ -48,6 +50,14 @@ export class GameEngine {
    */
   setAnimationController(animationController) {
     this.animationController = animationController;
+  }
+
+  /**
+   * 设置特殊图标管理器
+   * @param {SpecialTileManager} specialTileManager - 特殊图标管理器
+   */
+  setSpecialTileManager(specialTileManager) {
+    this.specialTileManager = specialTileManager;
   }
 
   /**
@@ -113,8 +123,51 @@ export class GameEngine {
     this.eventBus.emit(GameEvents.INPUT_DISABLED);
     
     try {
+      // 检查是否是特殊图标交换
+      const isSpecialSwap = tile1.isSpecial || tile2.isSpecial;
+      
       // 执行交换
       this.boardManager.swapTiles(pos1, pos2);
+      
+      // ✅ 在交换之后计算特殊图标激活位置（使用交换后的坐标）
+      let specialActivationPositions = [];
+      
+      // 如果两个都是特殊图标，检测组合效果
+      if (tile1.isSpecial && tile2.isSpecial && this.specialTileManager) {
+        const combo = this.specialTileManager.detectSpecialCombo(tile1, tile2);
+        if (combo) {
+          console.log(`💥 特殊图标组合: ${combo.description}`);
+          specialActivationPositions = combo.positions;
+          
+          // 发布特殊组合事件
+          this.eventBus.emit('special:combo:activated', {
+            tile1,
+            tile2,
+            combo
+          });
+        }
+      }
+      // 如果只有一个是特殊图标，检测单个激活
+      else if (isSpecialSwap && this.specialTileManager) {
+        const specialTile = tile1.isSpecial ? tile1 : tile2;
+        const normalTile = tile1.isSpecial ? tile2 : tile1;
+        
+        specialActivationPositions = this.specialTileManager.detectSpecialTileActivation(
+          specialTile,
+          normalTile
+        );
+        
+        if (specialActivationPositions.length > 0) {
+          console.log(`⚡ 特殊图标激活: ${specialTile.specialType}, 影响 ${specialActivationPositions.length} 个图标`);
+          
+          // 发布特殊图标激活事件
+          this.eventBus.emit('special:tile:activated', {
+            tile: specialTile,
+            targetTile: normalTile,
+            positions: specialActivationPositions
+          });
+        }
+      }
       
       // 发布交换完成事件
       this.eventBus.emit(GameEvents.TILE_SWAP_COMPLETE, {
@@ -136,50 +189,117 @@ export class GameEngine {
         await this.delay(this.config.animation.swapDuration);
       }
       
-      // 检测匹配
-      const matches = this.matchDetector.findMatches(this.boardManager);
-      
-      if (matches.length > 0) {
-        // 有匹配：处理匹配消除流程
-        console.log(`✅ 发现匹配: ${matches.length} 个`);
+      // 如果有特殊图标激活，直接处理消除
+      if (specialActivationPositions.length > 0) {
         this.moves++;
-        
-        // 发布移动次数更新事件
         this.eventBus.emit('moves:update', { moves: this.moves });
+        
+        // 计算特殊图标分数
+        const specialTile = tile1.isSpecial ? tile1 : tile2;
+        const bonus = this.specialTileManager.calculateSpecialBonus(
+          specialTile.specialType,
+          specialActivationPositions.length
+        );
+        
+        this.score += bonus;
+        this.eventBus.emit(GameEvents.SCORE_UPDATE, {
+          score: this.score,
+          delta: bonus,
+          combo: 1,
+          isSpecial: true,
+          specialType: specialTile.specialType
+        });
+        
+        // ✅ 收集要移除的图标对象
+        const tilesToRemove = specialActivationPositions
+          .map(pos => this.boardManager.getTile(pos.x, pos.y))
+          .filter(tile => tile !== null);
+        
+        // ✅ 发布移除开始事件
+        this.eventBus.emit(GameEvents.TILE_REMOVE_START, {
+          tiles: tilesToRemove
+        });
+        
+        // ✅ 播放消除动画
+        if (this.animationController && this.renderEngine) {
+          const sprites = tilesToRemove
+            .map(tile => this.renderEngine.getTileSprite(tile.id))
+            .filter(sprite => sprite !== undefined);
+          
+          if (sprites.length > 0) {
+            await this.animationController.animateRemove(
+              sprites,
+              this.config.animation.removeDuration
+            );
+          }
+        } else {
+          // 降级：使用延时模拟
+          await this.delay(this.config.animation.removeDuration);
+        }
+        
+        // 移除激活位置的图标
+        this.boardManager.removeTiles(specialActivationPositions);
+        
+        // ✅ 发布移除完成事件
+        this.eventBus.emit(GameEvents.TILE_REMOVE_COMPLETE, {
+          tiles: tilesToRemove,
+          positions: specialActivationPositions
+        });
         
         // 重置连锁计数
         this.comboCount = 1;
         
-        // 处理匹配（传递 renderEngine）
+        // 继续处理下落和填充
+        await this.processFallAndFill(this.renderEngine);
+        
+        // 处理可能的连锁匹配
         await this.processMatches(this.renderEngine);
       } else {
-        // 无匹配：交换回原位置
-        console.log('❌ 无匹配，交换回原位置');
+        // 检测普通匹配
+        const matches = this.matchDetector.findMatches(this.boardManager);
         
-        this.boardManager.swapTiles(pos1, pos2);
-        
-        // 发布交换回退事件
-        this.eventBus.emit(GameEvents.TILE_SWAP_REVERT, {
-          tile1,
-          tile2,
-          pos1,
-          pos2
-        });
-        
-        // 播放回退动画
-        if (this.animationController && sprite1 && sprite2) {
-          await this.animationController.animateSwap(
-            sprite1,
-            sprite2,
-            this.config.animation.swapDuration
-          );
+        if (matches.length > 0) {
+          // 有匹配：处理匹配消除流程
+          console.log(`✅ 发现匹配: ${matches.length} 个`);
+          this.moves++;
+          
+          // 发布移动次数更新事件
+          this.eventBus.emit('moves:update', { moves: this.moves });
+          
+          // 重置连锁计数
+          this.comboCount = 1;
+          
+          // 处理匹配（传递 renderEngine）
+          await this.processMatches(this.renderEngine);
         } else {
-          // 降级：使用延时模拟
-          await this.delay(this.config.animation.swapDuration);
+          // 无匹配：交换回原位置
+          console.log('❌ 无匹配，交换回原位置');
+          
+          this.boardManager.swapTiles(pos1, pos2);
+          
+          // 发布交换回退事件
+          this.eventBus.emit(GameEvents.TILE_SWAP_REVERT, {
+            tile1,
+            tile2,
+            pos1,
+            pos2
+          });
+          
+          // 播放回退动画
+          if (this.animationController && sprite1 && sprite2) {
+            await this.animationController.animateSwap(
+              sprite1,
+              sprite2,
+              this.config.animation.swapDuration
+            );
+          } else {
+            // 降级：使用延时模拟
+            await this.delay(this.config.animation.swapDuration);
+          }
+          
+          // 发布无匹配事件
+          this.eventBus.emit(GameEvents.MATCH_NONE);
         }
-        
-        // 发布无匹配事件
-        this.eventBus.emit(GameEvents.MATCH_NONE);
       }
       
     } catch (error) {
@@ -204,6 +324,83 @@ export class GameEngine {
   }
 
   /**
+   * 处理下落和填充（不检测匹配）
+   * @param {RenderEngine} renderEngine - 渲染引擎
+   */
+  async processFallAndFill(renderEngine = null) {
+    // 应用重力（图标下落）
+    const movements = this.boardManager.applyGravity();
+    
+    if (movements.length > 0) {
+      // 发布下落开始事件
+      this.eventBus.emit(GameEvents.TILE_FALL_START, {
+        movements
+      });
+      
+      // 播放下落动画
+      if (this.animationController && renderEngine) {
+        const fallAnimations = movements
+          .map(({ tile, to }) => {
+            const sprite = renderEngine.getTileSprite(tile.id);
+            if (sprite) {
+              const { y: targetY } = renderEngine.gridToScreen(to.x, to.y);
+              return { sprite, targetY };
+            }
+            return null;
+          })
+          .filter(anim => anim !== null);
+        
+        if (fallAnimations.length > 0) {
+          await this.animationController.animateFallBatch(
+            fallAnimations,
+            this.config.animation.fallDuration
+          );
+        }
+      } else {
+        // 降级：使用延时模拟
+        await this.delay(this.config.animation.fallDuration);
+      }
+      
+      // 发布下落完成事件
+      this.eventBus.emit(GameEvents.TILE_FALL_COMPLETE, {
+        movements
+      });
+    }
+    
+    // 填充游戏板（生成新图标）
+    const newTiles = this.boardManager.fillBoard();
+    
+    if (newTiles.length > 0) {
+      // 发布生成开始事件
+      this.eventBus.emit(GameEvents.TILE_SPAWN_START, {
+        tiles: newTiles
+      });
+      
+      // 播放生成动画
+      if (this.animationController && renderEngine) {
+        const newSprites = newTiles
+          .map(tile => renderEngine.getTileSprite(tile.id))
+          .filter(sprite => sprite !== undefined);
+        
+        if (newSprites.length > 0) {
+          await this.animationController.animateSpawnBatch(
+            newSprites,
+            this.config.animation.spawnDuration
+          );
+        }
+      } else {
+        // 降级：使用延时模拟
+        await this.delay(this.config.animation.spawnDuration);
+      }
+      
+      // 发布生成完成事件
+      this.eventBus.emit(GameEvents.TILE_SPAWN_COMPLETE, {
+        tiles: newTiles
+      });
+    }
+  }
+
+  /**
    * 处理匹配消除流程
    * @param {RenderEngine} renderEngine - 渲染引擎（可选，用于获取精灵）
    */
@@ -219,6 +416,15 @@ export class GameEngine {
         break;
       }
       
+      // 检测是否需要生成特殊图标
+      let specialTileInfo = null;
+      if (this.specialTileManager) {
+        specialTileInfo = this.specialTileManager.detectSpecialTileGeneration(matches);
+        if (specialTileInfo) {
+          console.log(`🌟 检测到特殊图标生成: ${specialTileInfo.type} at (${specialTileInfo.position.x}, ${specialTileInfo.position.y})`);
+        }
+      }
+      
       // 计算总消除图标数
       const totalTiles = matches.reduce((sum, match) => sum + match.tiles.length, 0);
       
@@ -226,7 +432,8 @@ export class GameEngine {
       this.eventBus.emit(GameEvents.MATCH_FOUND, {
         matches,
         totalTiles,
-        comboCount: this.comboCount
+        comboCount: this.comboCount,
+        specialTileInfo
       });
       
       // 计算并更新分数
@@ -257,6 +464,13 @@ export class GameEngine {
       
       matches.forEach(match => {
         match.tiles.forEach(tile => {
+          // 如果这个位置要生成特殊图标，不移除它
+          if (specialTileInfo && 
+              tile.x === specialTileInfo.position.x && 
+              tile.y === specialTileInfo.position.y) {
+            return;
+          }
+          
           if (!tileIdsToRemove.has(tile.id)) {
             tilesToRemove.push(tile);
             tileIdsToRemove.add(tile.id);
@@ -289,6 +503,22 @@ export class GameEngine {
       // 从游戏板移除图标
       const positions = tilesToRemove.map(tile => ({ x: tile.x, y: tile.y }));
       this.boardManager.removeTiles(positions);
+      
+      // 生成特殊图标（在移除之后）
+      if (specialTileInfo) {
+        const { x, y } = specialTileInfo.position;
+        const tile = this.boardManager.getTile(x, y);
+        if (tile) {
+          this.boardManager.createSpecialTile(x, y, specialTileInfo.type);
+          
+          // 发布特殊图标生成事件
+          this.eventBus.emit('special:tile:created', {
+            tile,
+            specialType: specialTileInfo.type,
+            position: { x, y }
+          });
+        }
+      }
       
       // 发布移除完成事件
       this.eventBus.emit(GameEvents.TILE_REMOVE_COMPLETE, {
@@ -380,6 +610,52 @@ export class GameEngine {
     this.eventBus.emit(GameEvents.BOARD_STABLE);
     
     console.log(`✨ 匹配处理完成，连锁: ${this.comboCount - 1} 次，总分: ${this.score}`);
+    
+    // 检查是否有可用移动
+    await this.checkAndHandleNoMoves();
+  }
+
+  /**
+   * 检查并处理无可用移动的情况
+   */
+  async checkAndHandleNoMoves() {
+    // 检查是否有可用移动
+    const hasValidMoves = this.matchDetector.hasValidMoves(this.boardManager);
+    
+    if (!hasValidMoves) {
+      console.log('⚠️  无可用移动，准备洗牌...');
+      
+      // 发布无可用移动事件
+      this.eventBus.emit(GameEvents.MOVES_NONE);
+      
+      // 显示洗牌提示
+      this.eventBus.emit('board:shuffle:start');
+      
+      // 延迟2秒后洗牌
+      await this.delay(2000);
+      
+      // 执行洗牌
+      this.boardManager.shuffleBoard();
+      
+      // 清除缓存
+      this.matchDetector.clearCache();
+      
+      // 发布洗牌完成事件
+      this.eventBus.emit(GameEvents.BOARD_SHUFFLE, {
+        score: this.score,
+        time: this.remainingTime
+      });
+      
+      console.log('🔀 洗牌完成');
+      
+      // 再次检查是否有可用移动（理论上洗牌后应该有）
+      const hasMovesAfterShuffle = this.matchDetector.hasValidMoves(this.boardManager);
+      if (!hasMovesAfterShuffle) {
+        console.warn('⚠️  洗牌后仍无可用移动，再次洗牌');
+        // 递归调用，直到有可用移动
+        await this.checkAndHandleNoMoves();
+      }
+    }
   }
 
   /**

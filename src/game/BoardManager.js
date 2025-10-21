@@ -281,7 +281,8 @@ export class BoardManager {
    */
   wouldCreateMatch(x, y) {
     const tile = this.getTile(x, y);
-    if (!tile) return false;
+    // ✅ 特殊图标不参与匹配
+    if (!tile || tile.isSpecial) return false;
 
     // 检查横向
     let horizontalCount = 1;
@@ -289,7 +290,8 @@ export class BoardManager {
     // 向左检查
     for (let i = x - 1; i >= 0; i--) {
       const leftTile = this.getTile(i, y);
-      if (leftTile && leftTile.type === tile.type) {
+      // ✅ 跳过特殊图标
+      if (leftTile && !leftTile.isSpecial && leftTile.type === tile.type) {
         horizontalCount++;
       } else {
         break;
@@ -299,7 +301,8 @@ export class BoardManager {
     // 向右检查
     for (let i = x + 1; i < this.cols; i++) {
       const rightTile = this.getTile(i, y);
-      if (rightTile && rightTile.type === tile.type) {
+      // ✅ 跳过特殊图标
+      if (rightTile && !rightTile.isSpecial && rightTile.type === tile.type) {
         horizontalCount++;
       } else {
         break;
@@ -314,7 +317,8 @@ export class BoardManager {
     // 向上检查
     for (let i = y - 1; i >= 0; i--) {
       const upTile = this.getTile(x, i);
-      if (upTile && upTile.type === tile.type) {
+      // ✅ 跳过特殊图标
+      if (upTile && !upTile.isSpecial && upTile.type === tile.type) {
         verticalCount++;
       } else {
         break;
@@ -324,7 +328,8 @@ export class BoardManager {
     // 向下检查
     for (let i = y + 1; i < this.rows; i++) {
       const downTile = this.getTile(x, i);
-      if (downTile && downTile.type === tile.type) {
+      // ✅ 跳过特殊图标
+      if (downTile && !downTile.isSpecial && downTile.type === tile.type) {
         verticalCount++;
       } else {
         break;
@@ -370,6 +375,29 @@ export class BoardManager {
 
     // 确保洗牌后无初始匹配
     this.ensureNoInitialMatches();
+  }
+
+  /**
+   * 创建特殊图标
+   * @param {number} x - X坐标
+   * @param {number} y - Y坐标
+   * @param {string} specialType - 特殊图标类型
+   * @returns {Tile|null} 创建的特殊图标
+   */
+  createSpecialTile(x, y, specialType) {
+    if (!this.isValidPosition(x, y)) {
+      console.warn(`尝试在无效位置创建特殊图标: (${x}, ${y})`);
+      return null;
+    }
+
+    const tile = this.getTile(x, y);
+    if (tile) {
+      tile.setSpecial(specialType);
+      console.log(`✨ 创建特殊图标: ${specialType} at (${x}, ${y})`);
+      return tile;
+    }
+
+    return null;
   }
 
   /**

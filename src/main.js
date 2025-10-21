@@ -9,6 +9,7 @@ import { StateManager, GameState } from './core/StateManager.js';
 import { GameEngine } from './core/GameEngine.js';
 import { BoardManager } from './game/BoardManager.js';
 import { MatchDetector } from './game/MatchDetector.js';
+import { SpecialTileManager } from './game/SpecialTileManager.js';
 import { RenderEngine } from './rendering/RenderEngine.js';
 import { TileTextureFactory } from './rendering/TileTextureFactory.js';
 import { InputManager } from './input/InputManager.js';
@@ -27,6 +28,7 @@ class Game {
     this.gameEngine = null;
     this.boardManager = null;
     this.matchDetector = null;
+    this.specialTileManager = null;
     this.renderEngine = null;
     this.textureFactory = null;
     this.inputManager = null;
@@ -71,6 +73,10 @@ class Game {
       console.log('🎬 初始化动画控制器...');
       this.animationController = new AnimationController(this.eventBus, this.config);
 
+      // 5.5 创建特殊图标管理器
+      console.log('✨ 初始化特殊图标管理器...');
+      this.specialTileManager = new SpecialTileManager(this.config, this.boardManager);
+
       // 6. 创建游戏引擎
       console.log('⚙️  初始化游戏引擎...');
       this.gameEngine = new GameEngine(
@@ -79,7 +85,8 @@ class Game {
         this.boardManager,
         this.matchDetector,
         this.stateManager,
-        this.animationController
+        this.animationController,
+        this.specialTileManager
       );
       this.gameEngine.init();
 
@@ -349,9 +356,46 @@ class Game {
     // 游戏板稳定事件
     this.eventBus.on('board:stable', () => {
       console.log('✅ 游戏板稳定');
+    });
+
+    // 特殊图标生成事件
+    this.eventBus.on('special:tile:created', ({ tile, specialType, position }) => {
+      console.log(`✨ 特殊图标生成: ${specialType} at (${position.x}, ${position.y})`);
       
-      // 检查是否有可用移动
-      this.gameEngine.checkGameOver();
+      // ✅ 更新精灵纹理（传入 textureFactory 以更新纹理）
+      const sprite = this.renderEngine.getTileSprite(tile.id);
+      if (sprite) {
+        this.renderEngine.updateTileSprite(sprite, tile, this.textureFactory);
+      }
+    });
+
+    // 特殊图标激活事件
+    this.eventBus.on('special:tile:activated', ({ tile, targetTile, positions }) => {
+      console.log(`⚡ 特殊图标激活: ${tile.specialType}, 影响 ${positions.length} 个图标`);
+    });
+
+    // 特殊图标组合事件
+    this.eventBus.on('special:combo:activated', ({ tile1, tile2, combo }) => {
+      console.log(`💥 特殊组合: ${combo.description}`);
+    });
+
+    // 洗牌开始事件
+    this.eventBus.on('board:shuffle:start', () => {
+      console.log('🔀 开始洗牌...');
+      // 可以显示洗牌提示UI
+    });
+
+    // 洗牌完成事件
+    this.eventBus.on('board:shuffle', ({ score, time }) => {
+      console.log('🔀 洗牌完成');
+      
+      // 重新渲染游戏板
+      this.renderEngine.renderBoard(this.boardManager, this.textureFactory);
+      
+      // 为所有精灵添加交互事件
+      this.renderEngine.tileSprites.forEach(sprite => {
+        this.inputManager.addSpriteInteraction(sprite);
+      });
     });
 
     // 匹配发现事件（传递渲染引擎给游戏引擎）

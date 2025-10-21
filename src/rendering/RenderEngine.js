@@ -261,11 +261,23 @@ export class RenderEngine {
    * 更新图标精灵
    * @param {PIXI.Sprite} sprite - 精灵对象
    * @param {Tile} tile - 图标数据
+   * @param {TileTextureFactory} textureFactory - 纹理工厂（可选，用于更新纹理）
    */
-  updateTileSprite(sprite, tile) {
+  updateTileSprite(sprite, tile, textureFactory = null) {
     const { x: screenX, y: screenY } = this.gridToScreen(tile.x, tile.y);
     sprite.position.set(screenX, screenY);
     sprite.tileData = tile;
+    
+    // ✅ 如果提供了纹理工厂，检查是否需要更新纹理（例如变成特殊图标）
+    if (textureFactory) {
+      const textureKey = tile.isSpecial ? tile.specialType : `type${tile.type}`;
+      const newTexture = textureFactory.getTexture(textureKey);
+      
+      if (newTexture && sprite.texture !== newTexture) {
+        sprite.texture = newTexture;
+        console.log(`🔄 更新精灵纹理: ${textureKey}`);
+      }
+    }
   }
 
   /**
