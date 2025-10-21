@@ -3,9 +3,10 @@
  * 初始化所有模块并启动游戏
  */
 
-import * as PIXI from 'pixi.js';
 import { GameConfig } from './config.js';
 import { EventBus } from './core/EventBus.js';
+import { StateManager, GameState } from './core/StateManager.js';
+import { GameEngine } from './core/GameEngine.js';
 import { BoardManager } from './game/BoardManager.js';
 import { MatchDetector } from './game/MatchDetector.js';
 import { RenderEngine } from './rendering/RenderEngine.js';
@@ -21,6 +22,8 @@ class Game {
     this.eventBus = new EventBus();
     
     // 核心模块
+    this.stateManager = null;
+    this.gameEngine = null;
     this.boardManager = null;
     this.matchDetector = null;
     this.renderEngine = null;
@@ -42,7 +45,11 @@ class Game {
       console.log('📡 初始化事件总线...');
       // EventBus 已在构造函数中创建
 
-      // 2. 创建游戏板管理器
+      // 2. 创建状态管理器
+      console.log('🎯 初始化状态管理器...');
+      this.stateManager = new StateManager(GameState.MENU, this.eventBus);
+
+      // 3. 创建游戏板管理器
       console.log('🎲 初始化游戏板管理器...');
       this.matchDetector = new MatchDetector();
       this.boardManager = new BoardManager(
@@ -52,13 +59,24 @@ class Game {
         this.matchDetector
       );
 
-      // 3. 创建游戏板
+      // 4. 创建游戏板
       console.log('🎯 创建游戏板...');
       this.boardManager.createBoard();
       this.boardManager.ensureNoInitialMatches();
       console.log(`  ✅ 游戏板创建完成: ${this.config.board.rows}x${this.config.board.cols}`);
 
-      // 4. 初始化纹理工厂
+      // 5. 创建游戏引擎
+      console.log('⚙️  初始化游戏引擎...');
+      this.gameEngine = new GameEngine(
+        this.config,
+        this.eventBus,
+        this.boardManager,
+        this.matchDetector,
+        this.stateManager
+      );
+      this.gameEngine.init();
+
+      // 6. 初始化纹理工厂
       console.log('\n🎨 加载纹理资源...');
       this.textureFactory = new TileTextureFactory(this.config);
       
@@ -70,7 +88,7 @@ class Game {
         }
       });
 
-      // 5. 初始化渲染引擎
+      // 7. 初始化渲染引擎
       console.log('\n🖼️  初始化渲染引擎...');
       const container = document.getElementById('game-container');
       if (!container) {
@@ -80,11 +98,11 @@ class Game {
       this.renderEngine = new RenderEngine(container, this.config, this.eventBus);
       await this.renderEngine.init();
 
-      // 6. 渲染游戏板
+      // 8. 渲染游戏板
       console.log('🎨 渲染游戏板...');
       this.renderEngine.renderBoard(this.boardManager, this.textureFactory);
 
-      // 7. 初始化输入管理器
+      // 9. 初始化输入管理器
       console.log('\n🎮 初始化输入管理器...');
       this.inputManager = new InputManager(
         this.renderEngine.app,
@@ -98,7 +116,7 @@ class Game {
         this.inputManager.addSpriteInteraction(sprite);
       });
 
-      // 8. 订阅游戏事件
+      // 10. 订阅游戏事件
       this.setupEventListeners();
 
       this.isInitialized = true;
@@ -125,18 +143,10 @@ class Game {
       this.renderEngine.unhighlightTile();
     });
 
-    // 图标交换事件
-    this.eventBus.on('tile:swap:start', ({ tile1, tile2, pos1, pos2 }) => {
-      console.log(`🔄 交换请求: (${pos1.x}, ${pos1.y}) <-> (${pos2.x}, ${pos2.y})`);
-      
-      // 取消高亮
+    // 交换完成事件（更新精灵位置）
+    this.eventBus.on('tile:swap:complete', ({ tile1, tile2 }) => {
       this.renderEngine.unhighlightTile();
       
-      // TODO: 在后续阶段实现交换动画和匹配检测
-      // 目前只是简单交换位置
-      this.boardManager.swapTiles(pos1, pos2);
-      
-      // 更新精灵位置
       const sprite1 = this.renderEngine.getTileSprite(tile1.id);
       const sprite2 = this.renderEngine.getTileSprite(tile2.id);
       
@@ -144,21 +154,82 @@ class Game {
         this.renderEngine.updateTileSprite(sprite1, tile1);
         this.renderEngine.updateTileSprite(sprite2, tile2);
       }
+    });
+
+    // 交换回退事件
+    this.eventBus.on('tile:swap:revert', ({ tile1, tile2 }) => {
+      const sprite1 = this.renderEngine.getTileSprite(tile1.id);
+      const sprite2 = this.renderEngine.getTileSprite(tile2.id);
       
-      // 检测匹配
-      const matches = this.matchDetector.findMatches(this.boardManager);
-      if (matches.length > 0) {
-        console.log(`✅ 发现匹配: ${matches.length} 个`);
-        matches.forEach((match, index) => {
-          console.log(`  匹配 ${index + 1}: ${match.tiles.length} 个图标 (${match.direction})`);
-        });
-      } else {
-        console.log('❌ 无匹配，交换回原位置');
-        // 交换回原位置
-        this.boardManager.swapTiles(pos1, pos2);
+      if (sprite1 && sprite2) {
         this.renderEngine.updateTileSprite(sprite1, tile1);
         this.renderEngine.updateTileSprite(sprite2, tile2);
       }
+    });
+
+    // 匹配发现事件
+    this.eventBus.on('match:found', ({ matches, totalTiles, comboCount }) => {
+      console.log(`✨ 发现匹配: ${matches.length} 个匹配，共 ${totalTiles} 个图标`);
+      if (comboCount > 1) {
+        console.log(`🔥 连锁 x${comboCount}!`);
+      }
+    });
+
+    // 分数更新事件
+    this.eventBus.on('score:update', ({ score, delta, combo, multiplier }) => {
+      console.log(`💰 分数: ${score} (+${delta})`);
+      if (combo > 1) {
+        console.log(`   连锁倍数: x${multiplier.toFixed(2)}`);
+      }
+    });
+
+    // 图标移除事件
+    this.eventBus.on('tile:remove:complete', ({ tiles, positions }) => {
+      // 移除精灵
+      tiles.forEach(tile => {
+        this.renderEngine.removeTileSprite(tile.id);
+      });
+    });
+
+    // 图标下落事件
+    this.eventBus.on('tile:fall:complete', ({ movements }) => {
+      // 更新精灵位置
+      movements.forEach(({ tile }) => {
+        const sprite = this.renderEngine.getTileSprite(tile.id);
+        if (sprite) {
+          this.renderEngine.updateTileSprite(sprite, tile);
+        }
+      });
+    });
+
+    // 图标生成事件
+    this.eventBus.on('tile:spawn:complete', ({ tiles }) => {
+      // 创建新精灵
+      tiles.forEach(tile => {
+        const sprite = this.renderEngine.createTileSprite(tile, this.textureFactory);
+        this.inputManager.addSpriteInteraction(sprite);
+      });
+    });
+
+    // 游戏板稳定事件
+    this.eventBus.on('board:stable', () => {
+      console.log('✅ 游戏板稳定');
+      
+      // 检查是否有可用移动
+      this.gameEngine.checkGameOver();
+    });
+
+    // 游戏结束事件
+    this.eventBus.on('game:over', ({ reason, finalScore, moves }) => {
+      console.log(`\n🎮 游戏结束！`);
+      console.log(`   原因: ${reason === 'no_moves' ? '无可用移动' : reason}`);
+      console.log(`   最终分数: ${finalScore}`);
+      console.log(`   移动次数: ${moves}\n`);
+    });
+
+    // 状态变化事件
+    this.eventBus.on('state:change', ({ from, to }) => {
+      console.log(`🔄 状态变化: ${from} -> ${to}`);
     });
   }
 
@@ -171,8 +242,8 @@ class Game {
       return;
     }
 
-    console.log('🚀 游戏开始！');
-    this.eventBus.emit('game:start', {});
+    // 通过游戏引擎启动游戏
+    this.gameEngine.start();
   }
 
   /**

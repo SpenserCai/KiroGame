@@ -108,7 +108,7 @@
 
 ## 第三阶段：游戏循环和核心逻辑
 
-- [ ] 10. 实现状态管理器
+- [x] 10. 实现状态管理器
   - 创建src/core/StateManager.js实现状态管理器
   - 定义游戏状态常量（MENU、PLAYING、PAUSED、GAME_OVER、ANIMATING）
   - 实现setState()、getCurrentState()方法
@@ -116,7 +116,7 @@
   - 通过事件总线发布state:change事件
   - _需求: 5.1, 5.2, 5.3, 5.4_
 
-- [ ] 11. 实现游戏引擎核心逻辑
+- [x] 11. 实现游戏引擎核心逻辑
   - 创建src/core/GameEngine.js实现游戏引擎
   - 实现init()初始化游戏（创建游戏板、初始化分数为0）
   - 实现handleSwap()处理交换请求（验证相邻性、执行交换、检测匹配）
@@ -124,7 +124,7 @@
   - 订阅事件总线的相关事件（tile:select、tile:swap等）
   - _需求: 1.5, 2.3, 3.1_
 
-- [ ] 12. 实现消除和分数系统
+- [x] 12. 实现消除和分数系统
   - 在BoardManager中实现removeTiles()移除指定位置的图标
   - 在GameEngine中实现calculateScore()方法
   - 实现分数计算公式：基础分数 × 连锁倍数 + 额外奖励
@@ -134,7 +134,7 @@
   - 验证：测试不同连锁情况的分数计算是否正确
   - _需求: 3.4, 3.5_
 
-- [ ] 13. 实现下落和填充机制
+- [x] 13. 实现下落和填充机制
   - 在BoardManager中实现applyGravity()使图标向下移动填充空位
   - 实现getEmptyPositions()获取所有空位置
   - 实现fillBoard()在顶部生成新的随机图标填充空位
