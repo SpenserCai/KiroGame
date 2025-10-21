@@ -16,13 +16,15 @@ export class GameEngine {
    * @param {BoardManager} boardManager - 游戏板管理器
    * @param {MatchDetector} matchDetector - 匹配检测器
    * @param {StateManager} stateManager - 状态管理器
+   * @param {AnimationController} animationController - 动画控制器（可选）
    */
-  constructor(config, eventBus, boardManager, matchDetector, stateManager) {
+  constructor(config, eventBus, boardManager, matchDetector, stateManager, animationController = null) {
     this.config = config;
     this.eventBus = eventBus;
     this.boardManager = boardManager;
     this.matchDetector = matchDetector;
     this.stateManager = stateManager;
+    this.animationController = animationController;
     
     // 游戏数据
     this.score = 0;
@@ -34,6 +36,14 @@ export class GameEngine {
     
     // 绑定方法
     this.handleSwap = this.handleSwap.bind(this);
+  }
+
+  /**
+   * 设置动画控制器
+   * @param {AnimationController} animationController - 动画控制器
+   */
+  setAnimationController(animationController) {
+    this.animationController = animationController;
   }
 
   /**
@@ -65,10 +75,10 @@ export class GameEngine {
 
   /**
    * 处理交换请求
-   * @param {Object} data - 交换数据 {tile1, tile2, pos1, pos2}
+   * @param {Object} data - 交换数据 {tile1, tile2, pos1, pos2, sprite1, sprite2}
    */
   async handleSwap(data) {
-    const { tile1, tile2, pos1, pos2 } = data;
+    const { tile1, tile2, pos1, pos2, sprite1, sprite2 } = data;
     
     // 如果正在处理，忽略新的交换请求
     if (this.isProcessing) {
@@ -95,7 +105,7 @@ export class GameEngine {
       // 执行交换
       this.boardManager.swapTiles(pos1, pos2);
       
-      // 发布交换完成事件（触发动画）
+      // 发布交换完成事件
       this.eventBus.emit(GameEvents.TILE_SWAP_COMPLETE, {
         tile1,
         tile2,
@@ -103,8 +113,17 @@ export class GameEngine {
         pos2
       });
       
-      // 等待交换动画完成（这里暂时用延时模拟，后续会被动画系统替换）
-      await this.delay(this.config.animation.swapDuration);
+      // 播放交换动画
+      if (this.animationController && sprite1 && sprite2) {
+        await this.animationController.animateSwap(
+          sprite1,
+          sprite2,
+          this.config.animation.swapDuration
+        );
+      } else {
+        // 降级：使用延时模拟
+        await this.delay(this.config.animation.swapDuration);
+      }
       
       // 检测匹配
       const matches = this.matchDetector.findMatches(this.boardManager);
@@ -117,8 +136,8 @@ export class GameEngine {
         // 重置连锁计数
         this.comboCount = 1;
         
-        // 处理匹配
-        await this.processMatches();
+        // 处理匹配（传递 renderEngine）
+        await this.processMatches(this.renderEngine);
       } else {
         // 无匹配：交换回原位置
         console.log('❌ 无匹配，交换回原位置');
@@ -133,8 +152,17 @@ export class GameEngine {
           pos2
         });
         
-        // 等待回退动画完成
-        await this.delay(this.config.animation.swapDuration);
+        // 播放回退动画
+        if (this.animationController && sprite1 && sprite2) {
+          await this.animationController.animateSwap(
+            sprite1,
+            sprite2,
+            this.config.animation.swapDuration
+          );
+        } else {
+          // 降级：使用延时模拟
+          await this.delay(this.config.animation.swapDuration);
+        }
         
         // 发布无匹配事件
         this.eventBus.emit(GameEvents.MATCH_NONE);
@@ -163,8 +191,9 @@ export class GameEngine {
 
   /**
    * 处理匹配消除流程
+   * @param {RenderEngine} renderEngine - 渲染引擎（可选，用于获取精灵）
    */
-  async processMatches() {
+  async processMatches(renderEngine = null) {
     let hasMatches = true;
     
     while (hasMatches) {
@@ -226,8 +255,22 @@ export class GameEngine {
         tiles: tilesToRemove
       });
       
-      // 等待消除动画完成
-      await this.delay(this.config.animation.removeDuration);
+      // 播放消除动画
+      if (this.animationController && renderEngine) {
+        const sprites = tilesToRemove
+          .map(tile => renderEngine.getTileSprite(tile.id))
+          .filter(sprite => sprite !== undefined);
+        
+        if (sprites.length > 0) {
+          await this.animationController.animateRemove(
+            sprites,
+            this.config.animation.removeDuration
+          );
+        }
+      } else {
+        // 降级：使用延时模拟
+        await this.delay(this.config.animation.removeDuration);
+      }
       
       // 从游戏板移除图标
       const positions = tilesToRemove.map(tile => ({ x: tile.x, y: tile.y }));
@@ -248,8 +291,29 @@ export class GameEngine {
           movements
         });
         
-        // 等待下落动画完成
-        await this.delay(this.config.animation.fallDuration);
+        // 播放下落动画
+        if (this.animationController && renderEngine) {
+          const fallAnimations = movements
+            .map(({ tile, to }) => {
+              const sprite = renderEngine.getTileSprite(tile.id);
+              if (sprite) {
+                const { y: targetY } = renderEngine.gridToScreen(to.x, to.y);
+                return { sprite, targetY };
+              }
+              return null;
+            })
+            .filter(anim => anim !== null);
+          
+          if (fallAnimations.length > 0) {
+            await this.animationController.animateFallBatch(
+              fallAnimations,
+              this.config.animation.fallDuration
+            );
+          }
+        } else {
+          // 降级：使用延时模拟
+          await this.delay(this.config.animation.fallDuration);
+        }
         
         // 发布下落完成事件
         this.eventBus.emit(GameEvents.TILE_FALL_COMPLETE, {
@@ -266,8 +330,22 @@ export class GameEngine {
           tiles: newTiles
         });
         
-        // 等待生成动画完成
-        await this.delay(this.config.animation.spawnDuration);
+        // 播放生成动画
+        if (this.animationController && renderEngine) {
+          const newSprites = newTiles
+            .map(tile => renderEngine.getTileSprite(tile.id))
+            .filter(sprite => sprite !== undefined);
+          
+          if (newSprites.length > 0) {
+            await this.animationController.animateSpawnBatch(
+              newSprites,
+              this.config.animation.spawnDuration
+            );
+          }
+        } else {
+          // 降级：使用延时模拟
+          await this.delay(this.config.animation.spawnDuration);
+        }
         
         // 发布生成完成事件
         this.eventBus.emit(GameEvents.TILE_SPAWN_COMPLETE, {

@@ -12,6 +12,7 @@ import { MatchDetector } from './game/MatchDetector.js';
 import { RenderEngine } from './rendering/RenderEngine.js';
 import { TileTextureFactory } from './rendering/TileTextureFactory.js';
 import { InputManager } from './input/InputManager.js';
+import { AnimationController } from './animation/AnimationController.js';
 
 /**
  * 游戏主类
@@ -29,6 +30,7 @@ class Game {
     this.renderEngine = null;
     this.textureFactory = null;
     this.inputManager = null;
+    this.animationController = null;
     
     // 初始化状态
     this.isInitialized = false;
@@ -65,18 +67,23 @@ class Game {
       this.boardManager.ensureNoInitialMatches();
       console.log(`  ✅ 游戏板创建完成: ${this.config.board.rows}x${this.config.board.cols}`);
 
-      // 5. 创建游戏引擎
+      // 5. 创建动画控制器
+      console.log('🎬 初始化动画控制器...');
+      this.animationController = new AnimationController(this.eventBus, this.config);
+
+      // 6. 创建游戏引擎
       console.log('⚙️  初始化游戏引擎...');
       this.gameEngine = new GameEngine(
         this.config,
         this.eventBus,
         this.boardManager,
         this.matchDetector,
-        this.stateManager
+        this.stateManager,
+        this.animationController
       );
       this.gameEngine.init();
 
-      // 6. 初始化纹理工厂
+      // 7. 初始化纹理工厂
       console.log('\n🎨 加载纹理资源...');
       this.textureFactory = new TileTextureFactory(this.config);
       
@@ -88,7 +95,7 @@ class Game {
         }
       });
 
-      // 7. 初始化渲染引擎
+      // 8. 初始化渲染引擎
       console.log('\n🖼️  初始化渲染引擎...');
       const container = document.getElementById('game-container');
       if (!container) {
@@ -98,11 +105,11 @@ class Game {
       this.renderEngine = new RenderEngine(container, this.config, this.eventBus);
       await this.renderEngine.init();
 
-      // 8. 渲染游戏板
+      // 9. 渲染游戏板
       console.log('🎨 渲染游戏板...');
       this.renderEngine.renderBoard(this.boardManager, this.textureFactory);
 
-      // 9. 初始化输入管理器
+      // 10. 初始化输入管理器
       console.log('\n🎮 初始化输入管理器...');
       this.inputManager = new InputManager(
         this.renderEngine.app,
@@ -116,7 +123,14 @@ class Game {
         this.inputManager.addSpriteInteraction(sprite);
       });
 
-      // 10. 订阅游戏事件
+      // 11. 设置游戏循环（更新动画）
+      this.renderEngine.app.ticker.add((ticker) => {
+        const deltaTime = ticker.deltaMS;
+        this.animationController.update(deltaTime);
+        this.gameEngine.update(deltaTime / 1000); // 转换为秒
+      });
+
+      // 12. 订阅游戏事件
       this.setupEventListeners();
 
       this.isInitialized = true;
@@ -136,11 +150,45 @@ class Game {
     // 图标选中事件
     this.eventBus.on('tile:select', ({ tile }) => {
       this.renderEngine.highlightTile(tile);
+      
+      // 播放选中动画
+      const sprite = this.renderEngine.getTileSprite(tile.id);
+      if (sprite) {
+        this.animationController.animateSelection(sprite);
+      }
     });
 
     // 图标取消选中事件
-    this.eventBus.on('tile:deselect', () => {
+    this.eventBus.on('tile:deselect', ({ tile }) => {
       this.renderEngine.unhighlightTile();
+      
+      // 停止选中动画
+      if (tile) {
+        const sprite = this.renderEngine.getTileSprite(tile.id);
+        if (sprite) {
+          this.animationController.stopSelection(sprite);
+        }
+      }
+    });
+
+    // 交换开始事件（传递精灵信息给游戏引擎）
+    this.eventBus.on('tile:swap:start', (data) => {
+      const { tile1, tile2 } = data;
+      
+      // 停止选中动画
+      const sprite1 = this.renderEngine.getTileSprite(tile1.id);
+      const sprite2 = this.renderEngine.getTileSprite(tile2.id);
+      
+      if (sprite1) {
+        this.animationController.stopSelection(sprite1);
+      }
+      
+      // 传递精灵信息给游戏引擎
+      this.gameEngine.handleSwap({
+        ...data,
+        sprite1,
+        sprite2
+      });
     });
 
     // 交换完成事件（更新精灵位置）
@@ -183,17 +231,27 @@ class Game {
       }
     });
 
-    // 图标移除事件
-    this.eventBus.on('tile:remove:complete', ({ tiles, positions }) => {
+    // 图标移除开始事件（动画系统会处理）
+    this.eventBus.on('tile:remove:start', () => {
+      // 动画控制器会处理消除动画
+    });
+
+    // 图标移除完成事件
+    this.eventBus.on('tile:remove:complete', ({ tiles }) => {
       // 移除精灵
       tiles.forEach(tile => {
         this.renderEngine.removeTileSprite(tile.id);
       });
     });
 
-    // 图标下落事件
+    // 图标下落开始事件（动画系统会处理）
+    this.eventBus.on('tile:fall:start', () => {
+      // 动画控制器会处理下落动画
+    });
+
+    // 图标下落完成事件
     this.eventBus.on('tile:fall:complete', ({ movements }) => {
-      // 更新精灵位置
+      // 更新精灵位置（确保精确）
       movements.forEach(({ tile }) => {
         const sprite = this.renderEngine.getTileSprite(tile.id);
         if (sprite) {
@@ -202,13 +260,18 @@ class Game {
       });
     });
 
-    // 图标生成事件
-    this.eventBus.on('tile:spawn:complete', ({ tiles }) => {
-      // 创建新精灵
+    // 图标生成开始事件
+    this.eventBus.on('tile:spawn:start', ({ tiles }) => {
+      // 创建新精灵（动画控制器会处理生成动画）
       tiles.forEach(tile => {
         const sprite = this.renderEngine.createTileSprite(tile, this.textureFactory);
         this.inputManager.addSpriteInteraction(sprite);
       });
+    });
+
+    // 图标生成完成事件
+    this.eventBus.on('tile:spawn:complete', () => {
+      // 动画已完成
     });
 
     // 游戏板稳定事件
@@ -217,6 +280,14 @@ class Game {
       
       // 检查是否有可用移动
       this.gameEngine.checkGameOver();
+    });
+
+    // 匹配发现事件（传递渲染引擎给游戏引擎）
+    this.eventBus.on('match:found', () => {
+      // 确保 processMatches 可以访问渲染引擎
+      if (!this.gameEngine.renderEngine) {
+        this.gameEngine.renderEngine = this.renderEngine;
+      }
     });
 
     // 游戏结束事件

@@ -104,7 +104,7 @@ export class InputManager {
         pos1: { x: tile1.x, y: tile1.y },
         pos2: { x: tile2.x, y: tile2.y }
       });
-      console.log(`🔄 交换图标: (${tile1.x}, ${tile1.y}) <-> (${tile2.x}, ${tile2.y})`);
+      console.log(`🔄 交换请求: (${tile1.x}, ${tile1.y}) <-> (${tile2.x}, ${tile2.y})`);
       this.selectedTile = null;
     } else {
       // 不相邻：取消选中第一个，选中第二个

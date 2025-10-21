@@ -143,7 +143,7 @@
 
 ## 第四阶段：动画系统（基于PixiJS + 轻量级补间）
 
-- [ ] 14. 实现补间动画系统
+- [x] 14. 实现补间动画系统
   - 创建src/animation/Easing.js定义缓动函数（linear、easeInQuad、easeOutQuad、easeInOutQuad、easeOutBounce）
   - 创建src/animation/Tween.js实现轻量级补间动画类
   - 实现Tween构造函数（target、props、duration、easing）
@@ -152,7 +152,7 @@
   - 验证：创建简单的位置补间动画测试
   - _需求: 6.2, 6.3, 6.4_
 
-- [ ] 15. 实现动画控制器
+- [x] 15. 实现动画控制器
   - 创建src/animation/AnimationController.js实现动画控制器
   - 实现animateSwap(sprite1, sprite2, duration)方法，返回Promise
   - 实现animateRemove(sprites, duration)方法（scale到0 + alpha到0）
@@ -164,7 +164,7 @@
   - 验证：测试各种动画效果是否流畅
   - _需求: 2.5, 6.2, 6.3, 6.4_
 
-- [ ] 16. 集成动画到游戏流程
+- [x] 16. 集成动画到游戏流程
   - 在GameEngine的handleSwap()中使用async/await调用animateSwap()
   - 在processMatches()中使用Promise.all()并行播放消除动画
   - 在下落流程中使用Promise.all()并行播放所有下落动画
