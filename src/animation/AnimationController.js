@@ -281,7 +281,7 @@ export class AnimationController {
   }
 
   /**
-   * 选中动画（不改变大小，只通过边框高亮表示）
+   * 选中动画（微小脉冲效果）
    * @param {PIXI.Sprite} sprite - 精灵对象
    */
   animateSelection(sprite) {
@@ -301,15 +301,77 @@ export class AnimationController {
       }
     }
     
-    // ✅ 强制设置为正常缩放（使用 normalScale）
+    // ✅ 获取正常缩放值
     const normalScale = sprite.normalScale || 1.0;
+    
+    // ✅ 强制设置为正常缩放
     sprite.scale.set(normalScale);
     
-    // 标记该精灵正在播放选中动画（虽然现在没有实际动画）
+    // 标记该精灵正在播放选中动画
     this.selectionTweens.set(sprite, true);
     
-    // ✅ 不播放任何动画，保持原始大小
-    // 选中状态完全由 RenderEngine 的 highlightTile 边框来表示
+    // ✅ 脉冲动画：基于 normalScale 进行微小缩放（0.95x - 1.05x）
+    const minScale = normalScale * 0.95;  // 缩小到 95%
+    const maxScale = normalScale * 1.05;  // 放大到 105%
+    
+    const pulse = () => {
+      if (!this.selectionTweens.has(sprite)) {
+        return;
+      }
+      
+      // 缩小阶段
+      const shrinkTween = new Tween(
+        sprite.scale, 
+        { x: minScale, y: minScale }, 
+        400, 
+        'easeInOutQuad'
+      );
+      this._addTween(shrinkTween);
+      
+      shrinkTween.promise.then(() => {
+        if (!this.selectionTweens.has(sprite)) {
+          sprite.scale.set(normalScale);
+          return;
+        }
+        
+        // 放大阶段
+        const expandTween = new Tween(
+          sprite.scale, 
+          { x: maxScale, y: maxScale }, 
+          400, 
+          'easeInOutQuad'
+        );
+        this._addTween(expandTween);
+        
+        expandTween.promise.then(() => {
+          if (!this.selectionTweens.has(sprite)) {
+            sprite.scale.set(normalScale);
+            return;
+          }
+          
+          // 恢复到正常大小
+          const restoreTween = new Tween(
+            sprite.scale, 
+            { x: normalScale, y: normalScale }, 
+            400, 
+            'easeInOutQuad'
+          );
+          this._addTween(restoreTween);
+          
+          restoreTween.promise.then(() => {
+            pulse(); // 继续循环
+          }).catch(() => {
+            sprite.scale.set(normalScale);
+          });
+        }).catch(() => {
+          sprite.scale.set(normalScale);
+        });
+      }).catch(() => {
+        sprite.scale.set(normalScale);
+      });
+    };
+    
+    pulse();
   }
 
   /**
