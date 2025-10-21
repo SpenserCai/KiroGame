@@ -29,7 +29,7 @@
     "pixi.js": "^8.14.0"
   },
   "devDependencies": {
-    "vite": "^5.0.0",
-    "sharp": "^0.33.0"
+    "sharp": "^0.33.5",
+    "vite": "^5.4.21"
   }
 }
