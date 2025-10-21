@@ -8,24 +8,26 @@
 {
   "name": "ghost-match-game",
   "version": "1.0.0",
-  "description": "小鬼消消乐 - 基于PixiJS的消除类游戏",
+  "description": "小鬼消消乐 - 基于 PixiJS 的浏览器消除类游戏",
   "type": "module",
   "main": "src/main.js",
   "scripts": {
-    "start": "node server.js",
-    "dev": "node server.js",
-    "test": "node --test tests/**/*.test.js",
-    "test:watch": "node --test --watch tests/**/*.test.js",
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "test": "node --test tests/unit/**/*.test.js",
+    "test:watch": "node --test --watch tests/unit/**/*.test.js",
     "build:assets": "npm run build:ghosts && npm run build:special",
-    "build:ghosts": "svg2png-cli assets/svg/ghosts/*.svg -o assets/images/ghosts -w 128 -h 128",
-    "build:special": "svg2png-cli assets/svg/special/*.svg -o assets/images/special -w 128 -h 128"
+    "build:ghosts": "svg2png assets/svg/ghosts/*.svg -o assets/images/ghosts -w 128 -h 128",
+    "build:special": "svg2png assets/svg/special/*.svg -o assets/images/special -w 128 -h 128"
   },
   "keywords": [
     "game",
     "match-3",
     "pixi.js",
     "puzzle",
-    "javascript"
+    "javascript",
+    "browser-game"
   ],
   "author": "",
   "license": "MIT",
@@ -36,79 +38,58 @@
     "pixi.js": "^8.0.0"
   },
   "devDependencies": {
+    "vite": "^5.0.0",
     "svg2png": "^4.1.1"
   }
 }
 ```
 
-## server.js
+## vite.config.js
 
 ```javascript
 /**
- * 简单的开发服务器
- * 支持ES6模块和静态文件服务
+ * Vite 配置文件
+ * 用于开发服务器和生产构建
  */
-import http from 'http';
-import fs from 'fs';
+import { defineConfig } from 'vite';
 import path from 'path';
-import { fileURLToPath } from 'url';
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-
-// MIME类型映射
-const mimeTypes = {
-  '.html': 'text/html',
-  '.js': 'application/javascript',
-  '.css': 'text/css',
-  '.json': 'application/json',
-  '.png': 'image/png',
-  '.jpg': 'image/jpeg',
-  '.gif': 'image/gif',
-  '.svg': 'image/svg+xml',
-  '.ico': 'image/x-icon',
-  '.mp3': 'audio/mpeg',
-  '.wav': 'audio/wav',
-};
-
-const server = http.createServer((req, res) => {
-  console.log(`${req.method} ${req.url}`);
+export default defineConfig({
+  // 开发服务器配置
+  server: {
+    port: 5173,
+    open: true, // 自动打开浏览器
+    host: true, // 允许外部访问
+  },
   
-  // 处理根路径
-  let filePath = '.' + req.url;
-  if (filePath === './') {
-    filePath = './index.html';
-  }
+  // 构建配置
+  build: {
+    outDir: 'dist',
+    assetsDir: 'assets',
+    sourcemap: true, // 生成 source map 便于调试
+    
+    // 代码分割配置
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          'pixi': ['pixi.js'], // 将 PixiJS 单独打包
+        },
+      },
+    },
+  },
   
-  // 获取文件扩展名
-  const extname = path.extname(filePath).toLowerCase();
-  const contentType = mimeTypes[extname] || 'application/octet-stream';
+  // 路径别名（可选）
+  resolve: {
+    alias: {
+      '@': path.resolve(__dirname, './src'),
+      '@assets': path.resolve(__dirname, './assets'),
+    },
+  },
   
-  // 读取文件
-  fs.readFile(filePath, (err, content) => {
-    if (err) {
-      if (err.code === 'ENOENT') {
-        // 文件不存在
-        res.writeHead(404, { 'Content-Type': 'text/html' });
-        res.end('<h1>404 - File Not Found</h1>', 'utf-8');
-      } else {
-        // 服务器错误
-        res.writeHead(500);
-        res.end(`Server Error: ${err.code}`, 'utf-8');
-      }
-    } else {
-      // 成功返回文件
-      res.writeHead(200, { 'Content-Type': contentType });
-      res.end(content, 'utf-8');
-    }
-  });
-});
-
-const PORT = process.env.PORT || 3000;
-server.listen(PORT, () => {
-  console.log(`🎮 Ghost Match Game Server`);
-  console.log(`🚀 Server running at http://localhost:${PORT}/`);
-  console.log(`📝 Press Ctrl+C to stop`);
+  // 优化配置
+  optimizeDeps: {
+    include: ['pixi.js'], // 预构建 PixiJS
+  },
 });
 ```
 
@@ -197,10 +178,11 @@ server.listen(PORT, () => {
 ```javascript
 /**
  * 小鬼消消乐 - 主入口文件
- * 负责初始化游戏并启动游戏循环（基于PixiJS）
+ * 负责初始化游戏并启动游戏循环（基于 PixiJS）
  */
 
-import * as PIXI from './node_modules/pixi.js/dist/pixi.mjs';
+// 从 npm 包导入 PixiJS（Vite 会自动处理）
+import * as PIXI from 'pixi.js';
 import { GameConfig, GameState } from './config.js';
 import { EventBus } from './core/EventBus.js';
 import { GameEngine } from './core/GameEngine.js';
@@ -327,41 +309,59 @@ window.PIXI = PIXI;
 ## .gitignore
 
 ```
-# Node modules
+# 依赖
 node_modules/
 
 # 日志文件
 *.log
 npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
 
 # 操作系统文件
 .DS_Store
 Thumbs.db
-
-# IDE配置
-.vscode/
-.idea/
 *.swp
 *.swo
 
+# IDE 配置
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+
 # 测试覆盖率
 coverage/
+*.lcov
 
-# 构建输出（如果将来添加构建步骤）
+# 构建输出
 dist/
+dist-ssr/
 build/
+
+# Vite 缓存
+.vite/
+*.local
 
 # 环境变量
 .env
 .env.local
+.env.*.local
 
 # 临时文件
 tmp/
 temp/
+*.tmp
 
-# 生成的PNG资源（由SVG生成，不提交到git）
-# 注意：如果团队协作，可以选择提交PNG以避免每个人都需要转换
-assets/images/
+# 生成的 PNG 资源（由 SVG 生成）
+# 注意：团队协作时可以选择提交 PNG 以避免每个人都需要转换
+assets/images/ghosts/*.png
+assets/images/special/*.png
+
+# 但保留目录结构
+!assets/images/ghosts/.gitkeep
+!assets/images/special/.gitkeep
 ```
 
 ## 资源构建说明

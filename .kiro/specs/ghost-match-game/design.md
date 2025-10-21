@@ -2,7 +2,7 @@
 
 ## 概述
 
-小鬼消消乐采用纯Node.js + Canvas的技术栈，使用模块化、事件驱动的架构设计。系统分为五个核心模块：游戏引擎、渲染引擎、输入管理器、状态管理器和事件总线。每个模块职责单一，通过事件系统进行松耦合通信。
+小鬼消消乐是一款基于 PixiJS v8.0 的浏览器消除类游戏，使用模块化、事件驱动的架构设计。系统分为五个核心模块：游戏引擎、渲染引擎（基于 PixiJS）、输入管理器、状态管理器和事件总线。每个模块职责单一，通过事件系统进行松耦合通信。Node.js 仅用于开发服务器（Vite），游戏逻辑完全运行在浏览器端。
 
 ### 技术选型
 
@@ -46,96 +46,90 @@
 #### 技术栈详细说明
 
 - **运行环境**: 
-  - Node.js v18.x+ (LTS) - 用于开发服务器
-  - 现代浏览器（支持ES6+、WebGL 2.0）
+  - **开发环境**: Node.js v18.x+ (LTS) - 仅用于 Vite 开发服务器
+  - **运行环境**: 现代浏览器（支持 ES6+、WebGL 2.0）
+  - **游戏逻辑**: 完全运行在浏览器端，无需服务器端计算
   
 - **核心技术**:
-  - **PixiJS v8.0** - 2D渲染引擎（WebGL + Canvas降级）
-  - ES6+ Modules - 模块化代码组织（使用`<script type="module">`）
-  - requestAnimationFrame - 游戏循环（PixiJS内置Ticker）
-  - Web APIs (Event Listeners, Performance API)
+  - **PixiJS v8.0** - 2D 渲染引擎（WebGL + Canvas 降级）
+  - **npm** - 包管理工具，管理 PixiJS 等依赖
+  - **ES6+ Modules** - 模块化代码组织
+  - **Vite** - 现代化开发服务器和构建工具
+  - **Web APIs** - Event Listeners, Performance API, requestAnimationFrame
 
-- **PixiJS核心功能使用**:
+- **PixiJS 核心功能使用**:
   - `PIXI.Application` - 应用程序容器和渲染循环
   - `PIXI.Sprite` - 图标精灵对象
   - `PIXI.Graphics` - 绘制几何图形（背景、边框等）
   - `PIXI.Container` - 场景图管理
   - `PIXI.Text` - 文本渲染（分数、UI）
-  - `PIXI.Ticker` - 游戏循环和帧更新
-  - 补间动画库：使用轻量级的`gsap`或自定义补间
+  - `PIXI.Ticker` - 游戏循环和帧更新（基于 requestAnimationFrame）
+  - `PIXI.Assets` - 资源加载系统
+  - 补间动画：自定义轻量级补间系统（无需 GSAP）
 
 - **开发工具**:
-  - 开发服务器: Node.js原生http模块（自定义server.js）
-  - 包管理: npm（管理PixiJS依赖）
-  - 代码规范: ESLint (可选)
-  - 测试框架: Node.js内置test runner (Node 18+)
+  - **开发服务器**: Vite v5.0+ （快速热更新、自动处理模块）
+  - **包管理**: npm（管理 PixiJS 等依赖）
+  - **代码规范**: ESLint（可选）
+  - **测试框架**: Node.js 内置 test runner（Node 18+）用于逻辑测试
+  - **构建工具**: Vite（生产环境打包优化）
 
 - **模块加载策略**:
-  - 使用ES6原生模块系统（`import/export`）
-  - HTML中使用`<script type="module" src="./src/main.js"></script>`
-  - PixiJS通过npm安装，使用ES6 import导入
-  - 开发服务器正确设置`.js`文件的MIME类型为`application/javascript`
-  - 所有模块路径使用相对路径（如`./core/EventBus.js`）
-  - 使用浏览器原生模块加载（开发阶段），生产环境可选打包
+  - 使用 ES6 原生模块系统（`import/export`）
+  - **开发环境**: Vite 自动处理模块解析和热更新
+  - **PixiJS 导入**: `import * as PIXI from 'pixi.js'`（从 npm 包导入）
+  - **本地模块**: 使用相对路径（如 `./core/EventBus.js`）
+  - **生产环境**: Vite 自动打包、代码分割、tree-shaking
 
 - **依赖管理**:
   ```json
   // package.json
   {
     "dependencies": {
-      "pixi.js": "^8.0.0"
+      "pixi.js": "^8.0.0"  // PixiJS 渲染引擎
     },
     "devDependencies": {
-      "svg2png": "^4.1.1"  // SVG转PNG工具
+      "vite": "^5.0.0",    // 开发服务器和构建工具
+      "svg2png": "^4.1.1"  // SVG 转 PNG 工具
     }
   }
   ```
 
-- **开发服务器实现**:
-  - 方案1：使用Vite（推荐）- 自动处理模块、热更新
-  - 方案2：自定义Node.js服务器 + node_modules映射
+- **开发服务器配置**:
+  使用 Vite 作为开发服务器（推荐方案）：
   
   ```javascript
-  // server.js - 简单的开发服务器（支持node_modules）
-  import http from 'http';
-  import fs from 'fs';
-  import path from 'path';
-  import { fileURLToPath } from 'url';
+  // vite.config.js
+  import { defineConfig } from 'vite';
   
-  const __dirname = path.dirname(fileURLToPath(import.meta.url));
-  
-  const mimeTypes = {
-    '.html': 'text/html',
-    '.js': 'application/javascript',
-    '.css': 'text/css',
-    '.json': 'application/json',
-    '.png': 'image/png',
-    '.jpg': 'image/jpeg'
-  };
-  
-  const server = http.createServer((req, res) => {
-    let filePath = '.' + req.url;
-    if (filePath === './') filePath = './index.html';
-    
-    const extname = path.extname(filePath);
-    const contentType = mimeTypes[extname] || 'application/octet-stream';
-    
-    fs.readFile(filePath, (err, content) => {
-      if (err) {
-        res.writeHead(404);
-        res.end('File not found');
-      } else {
-        res.writeHead(200, { 'Content-Type': contentType });
-        res.end(content, 'utf-8');
-      }
-    });
-  });
-  
-  const PORT = 3000;
-  server.listen(PORT, () => {
-    console.log(`Server running at http://localhost:${PORT}/`);
+  export default defineConfig({
+    server: {
+      port: 5173,
+      open: true, // 自动打开浏览器
+    },
+    build: {
+      outDir: 'dist',
+      sourcemap: true,
+      rollupOptions: {
+        output: {
+          manualChunks: {
+            'pixi': ['pixi.js'], // 将 PixiJS 单独打包
+          },
+        },
+      },
+    },
+    optimizeDeps: {
+      include: ['pixi.js'], // 预构建 PixiJS
+    },
   });
   ```
+  
+  **Vite 优势**:
+  - ⚡ 极速热更新（HMR）
+  - 📦 自动处理 node_modules 导入
+  - 🔧 零配置开箱即用
+  - 🚀 生产构建优化（代码分割、压缩）
+  - 🎯 原生 ES 模块支持
 
 - **浏览器兼容性**:
   - Chrome 90+
@@ -910,64 +904,107 @@ assets/images/
 **图标纹理加载和精灵创建**:
 ```javascript
 // TileTextureFactory.js
+import * as PIXI from 'pixi.js';
+
 class TileTextureFactory {
-  constructor(app, config) {
-    this.app = app;
+  constructor(config) {
     this.config = config;
     this.textures = new Map();
+    this.isLoaded = false;
   }
   
   async init() {
-    // 定义资源清单
+    // 定义资源清单（使用 Vite 的相对路径）
     const assets = [
       // 普通图标
-      { alias: 'ghost-red', src: './assets/images/ghosts/ghost-red.png' },
-      { alias: 'ghost-blue', src: './assets/images/ghosts/ghost-blue.png' },
-      { alias: 'ghost-yellow', src: './assets/images/ghosts/ghost-yellow.png' },
-      { alias: 'ghost-green', src: './assets/images/ghosts/ghost-green.png' },
-      { alias: 'ghost-purple', src: './assets/images/ghosts/ghost-purple.png' },
+      { alias: 'ghost-red', src: '/assets/images/ghosts/ghost-red.png' },
+      { alias: 'ghost-blue', src: '/assets/images/ghosts/ghost-blue.png' },
+      { alias: 'ghost-yellow', src: '/assets/images/ghosts/ghost-yellow.png' },
+      { alias: 'ghost-green', src: '/assets/images/ghosts/ghost-green.png' },
+      { alias: 'ghost-purple', src: '/assets/images/ghosts/ghost-purple.png' },
       
       // 特殊图标
-      { alias: 'bomb', src: './assets/images/special/bomb.png' },
-      { alias: 'color-bomb', src: './assets/images/special/color-bomb.png' },
-      { alias: 'row-clear', src: './assets/images/special/row-clear.png' },
-      { alias: 'col-clear', src: './assets/images/special/col-clear.png' },
+      { alias: 'bomb', src: '/assets/images/special/bomb.png' },
+      { alias: 'color-bomb', src: '/assets/images/special/color-bomb.png' },
+      { alias: 'row-clear', src: '/assets/images/special/row-clear.png' },
+      { alias: 'col-clear', src: '/assets/images/special/col-clear.png' },
     ];
     
-    // 批量加载资源
-    await PIXI.Assets.load(assets.map(a => a.src));
-    
-    // 缓存纹理
-    this.textures.set('type0', PIXI.Assets.get('./assets/images/ghosts/ghost-red.png'));
-    this.textures.set('type1', PIXI.Assets.get('./assets/images/ghosts/ghost-blue.png'));
-    this.textures.set('type2', PIXI.Assets.get('./assets/images/ghosts/ghost-yellow.png'));
-    this.textures.set('type3', PIXI.Assets.get('./assets/images/ghosts/ghost-green.png'));
-    this.textures.set('type4', PIXI.Assets.get('./assets/images/ghosts/ghost-purple.png'));
-    
-    this.textures.set('bomb', PIXI.Assets.get('./assets/images/special/bomb.png'));
-    this.textures.set('color-bomb', PIXI.Assets.get('./assets/images/special/color-bomb.png'));
-    this.textures.set('row-clear', PIXI.Assets.get('./assets/images/special/row-clear.png'));
-    this.textures.set('col-clear', PIXI.Assets.get('./assets/images/special/col-clear.png'));
+    try {
+      // 批量加载资源（PixiJS Assets API）
+      await PIXI.Assets.load(assets.map(a => a.src));
+      
+      // 缓存纹理到 Map（方便快速访问）
+      this.textures.set('type0', PIXI.Assets.get('/assets/images/ghosts/ghost-red.png'));
+      this.textures.set('type1', PIXI.Assets.get('/assets/images/ghosts/ghost-blue.png'));
+      this.textures.set('type2', PIXI.Assets.get('/assets/images/ghosts/ghost-yellow.png'));
+      this.textures.set('type3', PIXI.Assets.get('/assets/images/ghosts/ghost-green.png'));
+      this.textures.set('type4', PIXI.Assets.get('/assets/images/ghosts/ghost-purple.png'));
+      
+      this.textures.set('bomb', PIXI.Assets.get('/assets/images/special/bomb.png'));
+      this.textures.set('color-bomb', PIXI.Assets.get('/assets/images/special/color-bomb.png'));
+      this.textures.set('row-clear', PIXI.Assets.get('/assets/images/special/row-clear.png'));
+      this.textures.set('col-clear', PIXI.Assets.get('/assets/images/special/col-clear.png'));
+      
+      this.isLoaded = true;
+      console.log('✅ All textures loaded successfully');
+    } catch (error) {
+      console.error('❌ Failed to load textures:', error);
+      throw new Error('Texture loading failed');
+    }
   }
   
   getTexture(key) {
-    return this.textures.get(key);
+    if (!this.isLoaded) {
+      throw new Error('Textures not loaded yet. Call init() first.');
+    }
+    const texture = this.textures.get(key);
+    if (!texture) {
+      console.warn(`Texture not found: ${key}`);
+    }
+    return texture;
+  }
+  
+  hasTexture(key) {
+    return this.textures.has(key);
   }
 }
 
 // 创建图标精灵
-function createTileSprite(tile, textureFactory) {
+function createTileSprite(tile, textureFactory, config) {
   const textureKey = tile.isSpecial ? tile.specialType : `type${tile.type}`;
   const texture = textureFactory.getTexture(textureKey);
   
+  if (!texture) {
+    throw new Error(`Texture not found for key: ${textureKey}`);
+  }
+  
   const sprite = new PIXI.Sprite(texture);
+  
+  // 设置锚点为中心（便于旋转和缩放）
   sprite.anchor.set(0.5);
+  
+  // 设置精灵尺寸
   sprite.width = config.rendering.tileSize;
   sprite.height = config.rendering.tileSize;
-  sprite.position.set(
-    tile.x * tileSize + offsetX,
-    tile.y * tileSize + offsetY
+  
+  // 计算屏幕位置
+  const { x: screenX, y: screenY } = gridToScreen(
+    tile.x, 
+    tile.y, 
+    config.rendering.tileSize,
+    config.rendering.boardOffsetX,
+    config.rendering.boardOffsetY
   );
+  
+  sprite.position.set(screenX, screenY);
+  
+  // 设置交互属性
+  sprite.eventMode = 'static'; // PixiJS v8 新 API
+  sprite.cursor = 'pointer';
+  
+  // 存储图块数据引用（便于事件处理）
+  sprite.tileData = tile;
   
   return sprite;
 }
@@ -1431,24 +1468,55 @@ ghost-match-game/
 {
   "name": "ghost-match-game",
   "version": "1.0.0",
-  "description": "小鬼消消乐 - 纯Node.js + Canvas消除游戏",
+  "description": "小鬼消消乐 - 基于 PixiJS 的浏览器消除类游戏",
   "type": "module",
   "scripts": {
-    "start": "node server.js",
-    "test": "node --test tests/**/*.test.js",
-    "dev": "node server.js"
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "test": "node --test tests/unit/**/*.test.js",
+    "test:watch": "node --test --watch tests/unit/**/*.test.js",
+    "build:assets": "npm run build:ghosts && npm run build:special",
+    "build:ghosts": "svg2png assets/svg/ghosts/*.svg -o assets/images/ghosts -w 128 -h 128",
+    "build:special": "svg2png assets/svg/special/*.svg -o assets/images/special -w 128 -h 128"
   },
-  "keywords": ["game", "match-3", "canvas", "puzzle"],
+  "keywords": ["game", "match-3", "pixi.js", "puzzle", "browser-game"],
   "author": "",
-  "license": "MIT"
+  "license": "MIT",
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "dependencies": {
+    "pixi.js": "^8.0.0"
+  },
+  "devDependencies": {
+    "vite": "^5.0.0",
+    "svg2png": "^4.1.1"
+  }
 }
 ```
 
 ### 启动步骤
-1. 安装Node.js 18+
-2. 运行 `npm start` 启动开发服务器
-3. 浏览器访问 `http://localhost:3000`
-4. 运行 `npm test` 执行单元测试
+
+#### 开发环境
+1. 确保已安装 Node.js 18+
+2. 安装依赖：`npm install`
+3. 启动开发服务器：`npm run dev`
+4. Vite 会自动打开浏览器访问 `http://localhost:5173`
+5. 修改代码会自动热更新
+
+#### 生产构建
+1. 构建项目：`npm run build`
+2. 预览构建结果：`npm run preview`
+3. 部署 `dist` 目录到静态服务器（如 Netlify、Vercel、GitHub Pages）
+
+#### 测试
+1. 运行单元测试：`npm test`
+2. 监听模式测试：`npm run test:watch`
+
+#### 资源构建
+1. 设计 SVG 图标并保存到 `assets/svg/` 目录
+2. 运行 `npm run build:assets` 将 SVG 转换为 PNG
 
 ## 实现优先级
 

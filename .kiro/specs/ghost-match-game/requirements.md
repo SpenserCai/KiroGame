@@ -2,19 +2,20 @@
 
 ## 简介
 
-小鬼消消乐是一款基于纯Node.js和Canvas的消除类益智游戏。玩家通过交换相邻的小鬼图标来形成三个或更多相同图标的连线，从而消除它们并获得分数。游戏采用模块化架构设计，确保代码解耦、可扩展且易于维护。
+小鬼消消乐是一款基于 PixiJS v8.0 的浏览器消除类益智游戏。玩家通过交换相邻的小鬼图标来形成三个或更多相同图标的连线，从而消除它们并获得分数。游戏采用模块化架构设计，使用 PixiJS 作为渲染引擎，通过 npm 管理依赖，确保代码解耦、可扩展且易于维护。Node.js 仅用于开发服务器，游戏逻辑完全运行在浏览器端。
 
 ## 术语表
 
 - **游戏系统 (Game System)**: 整个游戏应用的核心管理系统
 - **游戏板 (Game Board)**: 显示小鬼图标的网格区域
-- **小鬼图标 (Ghost Tile)**: 游戏中可消除的基本元素
+- **小鬼图标 (Ghost Tile)**: 游戏中可消除的基本元素，使用 PixiJS Sprite 渲染
 - **匹配 (Match)**: 三个或更多相同类型的小鬼图标形成的连线
 - **交换 (Swap)**: 玩家交换两个相邻小鬼图标的操作
-- **下落动画 (Fall Animation)**: 消除后小鬼图标向下移动的视觉效果
-- **渲染引擎 (Render Engine)**: 负责将游戏状态绘制到Canvas的模块
-- **输入管理器 (Input Manager)**: 处理用户鼠标/触摸输入的模块
+- **下落动画 (Fall Animation)**: 消除后小鬼图标向下移动的视觉效果，使用补间动画实现
+- **渲染引擎 (Render Engine)**: 基于 PixiJS 的渲染模块，负责管理场景图和精灵
+- **输入管理器 (Input Manager)**: 基于 PixiJS 事件系统处理用户鼠标/触摸输入的模块
 - **状态管理器 (State Manager)**: 管理游戏不同状态（菜单、游戏中、暂停等）的模块
+- **PixiJS Application**: PixiJS 的核心应用容器，管理渲染循环和场景图
 
 ## 需求
 
@@ -27,8 +28,9 @@
 1. WHEN 游戏系统启动时，THE 游戏系统 SHALL 创建一个8x8的游戏板网格
 2. WHEN 游戏板创建时，THE 游戏系统 SHALL 随机填充5种不同类型的小鬼图标
 3. WHEN 初始化完成时，THE 游戏系统 SHALL 确保游戏板上不存在任何初始匹配
-4. WHEN 游戏界面加载时，THE 渲染引擎 SHALL 在Canvas上绘制完整的游戏板
+4. WHEN 游戏界面加载时，THE 渲染引擎 SHALL 使用 PixiJS 创建并渲染完整的游戏板精灵
 5. WHEN 游戏启动时，THE 游戏系统 SHALL 将分数初始化为0
+6. WHEN PixiJS 资源加载时，THE 渲染引擎 SHALL 从 assets/images 目录加载所有图标纹理
 
 ### 需求 2: 小鬼图标交换
 
@@ -84,11 +86,11 @@
 
 #### 验收标准
 
-1. WHEN 小鬼图标被选中时，THE 渲染引擎 SHALL 显示高亮边框效果
-2. WHEN 小鬼图标交换时，THE 渲染引擎 SHALL 在200毫秒内播放平滑的交换动画
-3. WHEN 小鬼图标被消除时，THE 渲染引擎 SHALL 播放淡出或缩放动画效果
-4. WHEN 小鬼图标下落时，THE 渲染引擎 SHALL 使用缓动函数实现自然的下落效果
-5. WHEN 分数增加时，THE 渲染引擎 SHALL 在界面上显示分数变化的动画提示
+1. WHEN 小鬼图标被选中时，THE 渲染引擎 SHALL 使用 PixiJS Graphics 显示高亮边框效果
+2. WHEN 小鬼图标交换时，THE 动画控制器 SHALL 使用补间动画在200毫秒内平滑移动精灵位置
+3. WHEN 小鬼图标被消除时，THE 动画控制器 SHALL 使用补间动画播放精灵的淡出和缩放效果
+4. WHEN 小鬼图标下落时，THE 动画控制器 SHALL 使用缓动函数实现精灵的自然下落效果
+5. WHEN 分数增加时，THE 渲染引擎 SHALL 使用 PixiJS Text 在界面上显示分数变化的动画提示
 
 ### 需求 7: 模块化架构
 
@@ -96,11 +98,13 @@
 
 #### 验收标准
 
-1. THE 游戏系统 SHALL 将核心逻辑、渲染、输入处理和状态管理分离为独立模块
+1. THE 游戏系统 SHALL 将核心逻辑、渲染、输入处理和状态管理分离为独立 ES6 模块
 2. THE 游戏系统 SHALL 使用事件系统实现模块间的松耦合通信
 3. THE 游戏系统 SHALL 为每个模块定义清晰的接口和职责边界
 4. THE 游戏系统 SHALL 支持通过配置文件调整游戏参数（网格大小、图标类型数量等）
 5. THE 游戏系统 SHALL 允许在不修改核心代码的情况下添加新的小鬼图标类型
+6. THE 游戏系统 SHALL 使用 npm 管理 PixiJS 等第三方依赖
+7. THE 游戏系统 SHALL 使用 ES6 模块系统（import/export）组织代码
 
 ### 需求 8: 性能与响应
 
@@ -108,11 +112,11 @@
 
 #### 验收标准
 
-1. THE 渲染引擎 SHALL 保持至少60帧每秒的渲染性能
+1. THE 渲染引擎 SHALL 使用 PixiJS Ticker 保持至少60帧每秒的渲染性能
 2. WHEN 玩家执行交换操作时，THE 游戏系统 SHALL 在50毫秒内响应
-3. THE 游戏系统 SHALL 使用requestAnimationFrame实现平滑的动画循环
-4. THE 渲染引擎 SHALL 仅在游戏状态变化时重新绘制Canvas
-5. THE 游戏系统 SHALL 优化匹配检测算法以在10毫秒内完成扫描
+3. THE 游戏系统 SHALL 使用 PixiJS Ticker（基于 requestAnimationFrame）实现平滑的游戏循环
+4. THE 渲染引擎 SHALL 利用 PixiJS 的自动渲染优化，仅在场景图变化时重绘
+5. THE 游戏系统 SHALL 优化匹配检测算法以在5毫秒内完成扫描（8x8棋盘）
 
 ### 需求 9: 用户界面
 
@@ -120,11 +124,11 @@
 
 #### 验收标准
 
-1. THE 渲染引擎 SHALL 在游戏界面顶部显示当前分数
-2. THE 渲染引擎 SHALL 在游戏界面显示开始、暂停和重新开始按钮
-3. WHEN 无法进行有效移动时，THE 游戏系统 SHALL 显示"无可用移动"提示
-4. THE 渲染引擎 SHALL 使用清晰可辨的颜色和图案区分不同类型的小鬼图标
-5. THE 渲染引擎 SHALL 确保游戏界面在不同屏幕尺寸下正确显示
+1. THE 渲染引擎 SHALL 使用 PixiJS Text 在游戏界面顶部显示当前分数
+2. THE 渲染引擎 SHALL 使用 PixiJS Graphics 和 Text 创建交互式按钮（开始、暂停、重新开始）
+3. WHEN 无法进行有效移动时，THE 游戏系统 SHALL 使用 PixiJS Text 显示"无可用移动"提示
+4. THE 渲染引擎 SHALL 使用 PNG 纹理和清晰可辨的颜色区分不同类型的小鬼图标
+5. THE 渲染引擎 SHALL 监听窗口 resize 事件，动态调整 PixiJS 应用大小以适应不同屏幕
 
 ### 需求 10: 计时系统
 
