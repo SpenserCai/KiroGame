@@ -8,7 +8,7 @@
 {
   "name": "ghost-match-game",
   "version": "1.0.0",
-  "description": "小鬼消消乐 - 基于 PixiJS 的浏览器消除类游戏",
+  "description": "小鬼消消乐 - 基于 PixiJS 的浏览器消除类游戏（纯前端）",
   "type": "module",
   "main": "src/main.js",
   "scripts": {
@@ -589,7 +589,7 @@ main().catch((error) => {
 ```markdown
 # 小鬼消消乐 (Ghost Match Game)
 
-一款基于 PixiJS v8.0 的浏览器消除类益智游戏。
+一款基于 PixiJS v8.14.0 的浏览器消除类益智游戏（纯前端）。
 
 ## 特性
 
@@ -600,17 +600,23 @@ main().catch((error) => {
 - 🔧 高度可配置的游戏参数
 - 📱 响应式设计，支持多种屏幕尺寸
 - ⚡ Vite 驱动的快速开发体验
+- 🌐 纯前端应用，可部署到任何静态服务器
 
 ## 技术栈
 
-- **渲染引擎**: PixiJS v8.14.0（WebGL + Canvas 降级）
-- **开发工具**: Vite v5.0（开发服务器和构建工具）
-- **包管理**: npm
 - **运行环境**: 现代浏览器（Chrome 90+, Firefox 88+, Safari 14+, Edge 90+）
-- **开发环境**: Node.js 18+（仅用于开发服务器）
+- **渲染引擎**: PixiJS v8.14.0（WebGL + Canvas 降级）
+- **编程语言**: 原生 JavaScript（ES6+ Modules，浏览器端）
+- **开发工具**: Vite v5.0（开发服务器和构建工具）
+- **开发环境**: Node.js 18+（仅用于开发服务器和资源构建）
+- **包管理**: npm
 - **模块系统**: ES6+ Modules
-- **编程语言**: 原生 JavaScript（无需 TypeScript）
 - **图像处理**: sharp v0.33.0（SVG 转 PNG）
+
+**重要说明**：
+- 游戏逻辑完全运行在**浏览器端**
+- Node.js 仅用于**开发工具链**（Vite）和**资源构建**（sharp）
+- 这是纯前端应用，可部署到任何静态服务器（Netlify、Vercel、GitHub Pages 等）
 
 ## 快速开始
 
