@@ -368,6 +368,11 @@ class Game {
       console.log(`💰 分数: ${score} (+${delta})`);
       if (combo > 1) {
         console.log(`   连锁倍数: x${multiplier.toFixed(2)}`);
+        
+        // 🎨 创建连锁特效
+        if (this.renderEngine.particleEffects) {
+          this.renderEngine.particleEffects.createComboBurst(combo);
+        }
       }
       
       // ✅ 更新 UI 显示
@@ -381,6 +386,17 @@ class Game {
         const sprite = this.renderEngine.getTileSprite(tile.id);
         if (sprite) {
           this.animationController.stopSelection(sprite);
+          
+          // 🎨 创建消除爆炸粒子效果
+          if (this.renderEngine.particleEffects) {
+            const color = this.config.colors[`type${tile.type}`];
+            this.renderEngine.particleEffects.createExplosion(
+              sprite.x,
+              sprite.y,
+              color,
+              25
+            );
+          }
         }
       });
     });
@@ -460,6 +476,18 @@ class Game {
     // 特殊图标激活事件
     this.eventBus.on('special:tile:activated', ({ tile, targetTile, positions }) => {
       console.log(`⚡ 特殊图标激活: ${tile.specialType}, 影响 ${positions.length} 个图标`);
+      
+      // 🎨 创建特殊图标激活粒子效果
+      if (this.renderEngine.particleEffects) {
+        const sprite = this.renderEngine.getTileSprite(tile.id);
+        if (sprite) {
+          this.renderEngine.particleEffects.createSpecialActivation(
+            tile.specialType,
+            sprite.x,
+            sprite.y
+          );
+        }
+      }
     });
 
     // 特殊图标组合事件
