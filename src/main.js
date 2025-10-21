@@ -274,6 +274,9 @@ class Game {
       if (combo > 1) {
         console.log(`   连锁倍数: x${multiplier.toFixed(2)}`);
       }
+      
+      // ✅ 更新 UI 显示
+      this.renderEngine.updateScore(score);
     });
 
     // 图标移除开始事件

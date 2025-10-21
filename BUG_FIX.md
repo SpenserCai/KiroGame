@@ -108,11 +108,43 @@ startButton.on('pointerdown', () => {
 - `src/rendering/RenderEngine.js` - 移除了重复的 `hideStartMenu()` 调用
 - `src/core/GameEngine.js` - 无需修改（逻辑正确）
 
+## 修复 3：添加分数 UI 更新
+
+**问题：** 分数在控制台正确显示，但 UI 上的分数文本没有更新。
+
+**文件：** `src/main.js`
+
+**修改前：**
+```javascript
+// 分数更新事件
+this.eventBus.on('score:update', ({ score, delta, combo, multiplier }) => {
+  console.log(`💰 分数: ${score} (+${delta})`);
+  if (combo > 1) {
+    console.log(`   连锁倍数: x${multiplier.toFixed(2)}`);
+  }
+});
+```
+
+**修改后：**
+```javascript
+// 分数更新事件
+this.eventBus.on('score:update', ({ score, delta, combo, multiplier }) => {
+  console.log(`💰 分数: ${score} (+${delta})`);
+  if (combo > 1) {
+    console.log(`   连锁倍数: x${multiplier.toFixed(2)}`);
+  }
+  
+  // ✅ 更新 UI 显示
+  this.renderEngine.updateScore(score);
+});
+```
+
 ## 总结
 
-这是一个典型的事件驱动架构中的初始化顺序问题。修复的关键是确保：
+这是一个典型的事件驱动架构中的初始化顺序问题和 UI 更新遗漏问题。修复的关键是确保：
 1. 事件处理器中包含所有必要的初始化步骤
 2. 避免重复调用相同的方法
 3. 保持清晰的事件流程和职责分离
+4. **确保所有 UI 更新都在事件处理器中正确调用**
 
-现在游戏可以正常运行了！🎮✨
+现在游戏可以正常运行，分数也会实时更新了！🎮✨
