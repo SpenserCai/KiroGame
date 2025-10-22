@@ -61,17 +61,17 @@ export const GameConfig = {
   assets: {
     images: {
       ghosts: [
-        '/assets/images/ghosts/ghost-red.png',
-        '/assets/images/ghosts/ghost-blue.png',
-        '/assets/images/ghosts/ghost-yellow.png',
-        '/assets/images/ghosts/ghost-green.png',
-        '/assets/images/ghosts/ghost-purple.png'
+        './assets/images/ghosts/ghost-red.png',
+        './assets/images/ghosts/ghost-blue.png',
+        './assets/images/ghosts/ghost-yellow.png',
+        './assets/images/ghosts/ghost-green.png',
+        './assets/images/ghosts/ghost-purple.png'
       ],
       special: {
-        bomb: '/assets/images/special/bomb.png',
-        colorBomb: '/assets/images/special/color-bomb.png',
-        rowClear: '/assets/images/special/row-clear.png',
-        colClear: '/assets/images/special/col-clear.png'
+        bomb: './assets/images/special/bomb.png',
+        colorBomb: './assets/images/special/color-bomb.png',
+        rowClear: './assets/images/special/row-clear.png',
+        colClear: './assets/images/special/col-clear.png'
       }
     }
   },

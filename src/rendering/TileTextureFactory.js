@@ -24,17 +24,17 @@ export class TileTextureFactory {
     // 定义资源清单
     const assets = [
       // 普通图标
-      { alias: 'type0', src: '/assets/images/ghosts/ghost-red.png' },
-      { alias: 'type1', src: '/assets/images/ghosts/ghost-blue.png' },
-      { alias: 'type2', src: '/assets/images/ghosts/ghost-yellow.png' },
-      { alias: 'type3', src: '/assets/images/ghosts/ghost-green.png' },
-      { alias: 'type4', src: '/assets/images/ghosts/ghost-purple.png' },
+      { alias: 'type0', src: './assets/images/ghosts/ghost-red.png' },
+      { alias: 'type1', src: './assets/images/ghosts/ghost-blue.png' },
+      { alias: 'type2', src: './assets/images/ghosts/ghost-yellow.png' },
+      { alias: 'type3', src: './assets/images/ghosts/ghost-green.png' },
+      { alias: 'type4', src: './assets/images/ghosts/ghost-purple.png' },
 
       // 特殊图标 - 使用下划线命名以匹配 Tile.js 中的 SpecialTileType 常量
-      { alias: 'bomb', src: '/assets/images/special/bomb.png' },
-      { alias: 'color_bomb', src: '/assets/images/special/color-bomb.png' },
-      { alias: 'row_clear', src: '/assets/images/special/row-clear.png' },
-      { alias: 'col_clear', src: '/assets/images/special/col-clear.png' }
+      { alias: 'bomb', src: './assets/images/special/bomb.png' },
+      { alias: 'color_bomb', src: './assets/images/special/color-bomb.png' },
+      { alias: 'row_clear', src: './assets/images/special/row-clear.png' },
+      { alias: 'col_clear', src: './assets/images/special/col-clear.png' }
     ];
 
     try {
