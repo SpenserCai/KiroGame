@@ -1,0 +1,20 @@
+<svg width="128" height="128" viewBox="0 0 128 128" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- 横向消除图标 -->
+  <g transform="translate(16, 16)">
+    <!-- 光晕 -->
+    <rect x="4" y="28" width="88" height="40" rx="20" fill="#E17055" opacity="0.3"/>
+    <rect x="8" y="32" width="80" height="32" rx="16" fill="#E17055" opacity="0.5"/>
+    
+    <!-- 主体 -->
+    <rect x="12" y="36" width="72" height="24" rx="12" fill="#D63031" stroke="#FFF" stroke-width="2"/>
+    
+    <!-- 箭头 -->
+    <path d="M 20 48 L 76 48" stroke="white" stroke-width="4" stroke-linecap="round"/>
+    <path d="M 12 48 L 20 44 L 20 52 Z" fill="white"/>
+    <path d="M 84 48 L 76 44 L 76 52 Z" fill="white"/>
+    
+    <!-- 闪光 -->
+    <circle cx="48" cy="38" r="2" fill="white"/>
+    <circle cx="48" cy="58" r="2" fill="white"/>
+  </g>
+</svg>

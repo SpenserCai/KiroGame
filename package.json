@@ -11,7 +11,13 @@
     "test:watch": "node --test --watch tests/unit/**/*.test.js",
     "build:assets": "node scripts/convert-svg.js"
   },
-  "keywords": ["game", "match-3", "pixi.js", "puzzle", "browser-game"],
+  "keywords": [
+    "game",
+    "match-3",
+    "pixi.js",
+    "puzzle",
+    "browser-game"
+  ],
   "author": "",
   "license": "MIT",
   "engines": {
@@ -21,7 +27,8 @@
     "pixi.js": "^8.14.0"
   },
   "devDependencies": {
+    "sharp": "^0.33.0",
     "vite": "^5.0.0",
-    "sharp": "^0.33.0"
+    "vite-plugin-static-copy": "^3.1.4"
   }
 }
